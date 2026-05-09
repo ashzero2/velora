@@ -1,11 +1,13 @@
 // ============================================================
 // Velora — Daily Log Screen
-// Full logging form with date navigation, flow, mood, symptoms,
-// cervical mucus, biometrics, medication, and notes.
+// History feed with log cards + Modal for creating/editing logs.
 // ============================================================
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, TextInput, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import {
+  View, Text, TextInput, ScrollView, TouchableOpacity, Modal,
+  StyleSheet, Alert, KeyboardAvoidingView, Platform,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useDatabase } from '@src/hooks/useDatabase';
@@ -18,429 +20,329 @@ import { SymptomGrid } from '@src/components/log/SymptomGrid';
 import { SeveritySlider } from '@src/components/log/SeveritySlider';
 import { Card } from '@src/components/ui/Card';
 import { Button } from '@src/components/ui/Button';
-import { CERVICAL_MUCUS_OPTIONS } from '@src/constants/symptoms';
-import { today, addDays, subDays, formatDisplayDate, nowISO } from '@src/utils/dateUtils';
-import { generateId } from '@src/utils/idUtils';
-import type { DailyLog, FlowIntensity, MoodType, CervicalMucusType } from '@src/types';
+import { CERVICAL_MUCUS_OPTIONS, MOOD_OPTIONS } from '@src/constants/symptoms';
+import { today, subDays, formatDisplayDate, nowISO } from '@src/utils/dateUtils';
+import type { DailyLog, FlowIntensity, MoodType } from '@src/types';
 import { Severity } from '@src/types';
 import { colors, typography, spacing } from '@src/constants/theme';
+import { formatFlowIntensity } from '@src/utils/formatUtils';
+import { SEVERITY_LABELS } from '@src/constants/symptoms';
 
 export default function LogScreen() {
   const db = useDatabase();
   const currentCycle = useCycleStore((s) => s.currentCycle);
   const settings = useSettingsStore((s) => s.settings);
+  const todayLog = useLogStore((s) => s.todayLog);
+  const recentLogs = useLogStore((s) => s.recentLogs);
   const loadLogForDate = useLogStore((s) => s.loadLogForDate);
   const upsertLog = useLogStore((s) => s.upsertLog);
-  const recentLogs = useLogStore((s) => s.recentLogs);
   const initLog = useLogStore((s) => s.initialize);
   const isLoading = useLogStore((s) => s.isLoading);
 
-  const [selectedDate, setSelectedDate] = useState(today());
-  const [log, setLog] = useState<DailyLog>(
-    createBlankLog(today(), currentCycle?.id ?? null),
-  );
-  const [isSaved, setIsSaved] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [editingLog, setEditingLog] = useState<DailyLog | null>(null);
 
-  // Load log for selected date
-  const loadDate = useCallback(async (date: string) => {
+  useEffect(() => { initLog(db); }, [db, initLog]);
+
+  // Open modal to add/edit a log
+  const openLogModal = useCallback(async (date: string) => {
     const existing = await loadLogForDate(db, date);
-    if (existing) {
-      setLog(existing);
-    } else {
-      setLog(createBlankLog(date, currentCycle?.id ?? null));
-    }
-    setIsSaved(false);
+    setEditingLog(existing ?? createBlankLog(date, currentCycle?.id ?? null));
+    setModalVisible(true);
   }, [db, loadLogForDate, currentCycle]);
 
-  // Initialize log store to load recent logs
-  useEffect(() => {
-    initLog(db);
-  }, [db, initLog]);
+  const closeModal = () => { setModalVisible(false); setEditingLog(null); };
 
-  useEffect(() => {
-    loadDate(selectedDate);
-  }, [selectedDate, loadDate]);
-
-  // Date navigation
-  const goToPreviousDay = () => {
-    setSelectedDate((d) => subDays(d, 1));
-  };
-  const goToNextDay = () => {
-    const next = addDays(selectedDate, 1);
-    if (next <= today()) {
-      setSelectedDate(next);
-    }
-  };
-  const goToToday = () => setSelectedDate(today());
-
-  const isToday = selectedDate === today();
-  const canGoForward = !isToday;
-
-  // Update helpers
-  const updateField = <K extends keyof DailyLog>(field: K, value: DailyLog[K]) => {
-    setLog((prev) => ({ ...prev, [field]: value }));
-    setIsSaved(false);
-  };
-
-  // Save
   const handleSave = async () => {
+    if (!editingLog) return;
     try {
-      await upsertLog(db, { ...log, updatedAt: nowISO() });
-      setIsSaved(true);
+      await upsertLog(db, { ...editingLog, updatedAt: nowISO() });
+      closeModal();
     } catch {
-      Alert.alert('Error', 'Failed to save log. Please try again.');
+      Alert.alert('Error', 'Failed to save log.');
     }
   };
+
+  const updateField = <K extends keyof DailyLog>(field: K, value: DailyLog[K]) => {
+    setEditingLog((prev) => prev ? { ...prev, [field]: value } : prev);
+  };
+
+  // Sort recent logs newest first
+  const sortedLogs = [...recentLogs].sort((a, b) => b.date.localeCompare(a.date));
+  const hasLoggedToday = todayLog !== null;
 
   return (
     <SafeAreaView style={styles.safe}>
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        {/* Date Navigation Header */}
-        <View style={styles.dateHeader}>
-          <TouchableOpacity onPress={goToPreviousDay} activeOpacity={0.7} style={styles.dateArrow}>
-            <Ionicons name="chevron-back" size={24} color={colors.primary[600]} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={goToToday} activeOpacity={0.7}>
-            <Text style={styles.dateText}>
-              {isToday ? 'Today' : formatDisplayDate(selectedDate, true)}
-            </Text>
-            {!isToday && <Text style={styles.dateSubtext}>Tap for today</Text>}
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={goToNextDay}
-            activeOpacity={0.7}
-            style={[styles.dateArrow, !canGoForward && { opacity: 0.3 }]}
-            disabled={!canGoForward}
-          >
-            <Ionicons name="chevron-forward" size={24} color={colors.primary[600]} />
-          </TouchableOpacity>
+      {/* ── Main: History Feed ── */}
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.feedContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.headerRow}>
+          <Text style={styles.screenTitle}>Daily Log</Text>
         </View>
 
-        {/* Flow */}
-        <Card style={styles.section}>
-          <FlowSelector
-            value={log.flow}
-            onChange={(flow: FlowIntensity) => updateField('flow', flow)}
-          />
-        </Card>
-
-        {/* Mood */}
-        <Card style={styles.section}>
-          <MoodSelector
-            value={log.mood}
-            onChange={(moods: MoodType[]) => updateField('mood', moods)}
-          />
-        </Card>
-
-        {/* Symptoms */}
-        <Card style={styles.section}>
-          <SymptomGrid
-            values={{
-              crampsSeverity: log.crampsSeverity,
-              headacheSeverity: log.headacheSeverity,
-              acneSeverity: log.acneSeverity,
-              bloatingSeverity: log.bloatingSeverity,
-              backPainSeverity: log.backPainSeverity,
-              breastTendernessSeverity: log.breastTendernessSeverity,
-            }}
-            onChange={(field, severity) => updateField(field as keyof DailyLog, severity as any)}
-          />
-        </Card>
-
-        {/* Cervical Mucus (fertility tracking only) */}
-        {settings.fertilityTrackingEnabled && (
-          <Card style={styles.section}>
-            <Text style={styles.sectionLabel}>Cervical Mucus</Text>
-            <View style={styles.mucusRow}>
-              {CERVICAL_MUCUS_OPTIONS.map((option) => {
-                const isSelected = log.discharge === option.value;
-                return (
-                  <TouchableOpacity
-                    key={option.value}
-                    onPress={() => updateField('discharge', isSelected ? null : option.value)}
-                    activeOpacity={0.7}
-                    style={[
-                      styles.mucusChip,
-                      isSelected && styles.mucusChipSelected,
-                    ]}
-                  >
-                    <Text style={[styles.mucusLabel, isSelected && styles.mucusLabelSelected]}>
-                      {option.label}
-                    </Text>
-                    <Text style={[styles.mucusDesc, isSelected && styles.mucusDescSelected]}>
-                      {option.description}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
+        {/* Today CTA */}
+        <TouchableOpacity
+          onPress={() => openLogModal(today())}
+          activeOpacity={0.7}
+          style={[styles.todayCard, hasLoggedToday && styles.todayCardLogged]}
+        >
+          <View style={styles.todayLeft}>
+            <Ionicons
+              name={hasLoggedToday ? 'checkmark-circle' : 'add-circle'}
+              size={28}
+              color={hasLoggedToday ? colors.primary[500] : colors.primary[600]}
+            />
+            <View>
+              <Text style={styles.todayTitle}>
+                {hasLoggedToday ? 'Today — Logged' : 'Log Today'}
+              </Text>
+              {hasLoggedToday && todayLog && (
+                <Text style={styles.todaySubtext}>
+                  {todayLog.mood.map((m) => MOOD_OPTIONS.find((o) => o.value === m)?.emoji).filter(Boolean).join(' ')}
+                  {todayLog.flow ? ` · ${formatFlowIntensity(todayLog.flow)}` : ''}
+                </Text>
+              )}
+              {!hasLoggedToday && (
+                <Text style={styles.todaySubtext}>Tap to record your day</Text>
+              )}
             </View>
-          </Card>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={colors.secondary[400]} />
+        </TouchableOpacity>
+
+        {/* Recent Logs */}
+        {sortedLogs.length > 0 && (
+          <>
+            <Text style={styles.sectionTitle}>Recent Logs</Text>
+            {sortedLogs.map((logItem) => (
+              <LogHistoryCard
+                key={logItem.date}
+                log={logItem}
+                onPress={() => openLogModal(logItem.date)}
+              />
+            ))}
+          </>
         )}
 
-        {/* Libido */}
-        <Card style={styles.section}>
-          <SeveritySlider
-            label="Libido"
-            value={log.libido}
-            onChange={(severity) => updateField('libido', severity)}
-          />
-        </Card>
-
-        {/* Biometrics */}
-        <Card style={styles.section}>
-          <Text style={styles.sectionLabel}>Biometrics</Text>
-          <View style={styles.biometricsGrid}>
-            <BiometricInput
-              label="Sleep"
-              unit="hrs"
-              value={log.sleepHours}
-              onChange={(v) => updateField('sleepHours', v)}
-              keyboardType="decimal-pad"
-            />
-            <BiometricInput
-              label="Exercise"
-              unit="min"
-              value={log.exerciseMinutes}
-              onChange={(v) => updateField('exerciseMinutes', v ? Math.round(v) : null)}
-              keyboardType="number-pad"
-            />
-            <BiometricInput
-              label="Water"
-              unit={settings.waterUnit}
-              value={log.waterIntakeMl}
-              onChange={(v) => updateField('waterIntakeMl', v ? Math.round(v) : null)}
-              keyboardType="number-pad"
-            />
-            <BiometricInput
-              label="Body Temp"
-              unit={settings.temperatureUnit === 'celsius' ? '°C' : '°F'}
-              value={log.bodyTemperature}
-              onChange={(v) => updateField('bodyTemperature', v)}
-              keyboardType="decimal-pad"
-            />
-            <BiometricInput
-              label="BBT"
-              unit={settings.temperatureUnit === 'celsius' ? '°C' : '°F'}
-              value={log.basalBodyTemperature}
-              onChange={(v) => updateField('basalBodyTemperature', v)}
-              keyboardType="decimal-pad"
-            />
-            <BiometricInput
-              label="Weight"
-              unit={settings.weightUnit}
-              value={log.weight}
-              onChange={(v) => updateField('weight', v)}
-              keyboardType="decimal-pad"
-            />
+        {sortedLogs.length === 0 && !hasLoggedToday && (
+          <View style={styles.emptyState}>
+            <Ionicons name="document-text-outline" size={40} color={colors.secondary[300]} />
+            <Text style={styles.emptyTitle}>No logs yet</Text>
+            <Text style={styles.emptyDesc}>Start logging your daily symptoms, mood, and more</Text>
           </View>
-        </Card>
-
-        {/* Medication */}
-        <Card style={styles.section}>
-          <Text style={styles.sectionLabel}>Medication</Text>
-          <TextInput
-            style={styles.textInput}
-            placeholder="e.g. Ibuprofen, Birth control"
-            placeholderTextColor={colors.secondary[400]}
-            value={log.medication.join(', ')}
-            onChangeText={(text) => {
-              const meds = text.split(',').map((s) => s.trim()).filter(Boolean);
-              updateField('medication', meds);
-            }}
-          />
-        </Card>
-
-        {/* Notes */}
-        <Card style={styles.section}>
-          <Text style={styles.sectionLabel}>Notes</Text>
-          <TextInput
-            style={[styles.textInput, styles.notesInput]}
-            placeholder="Any additional notes..."
-            placeholderTextColor={colors.secondary[400]}
-            value={log.notes}
-            onChangeText={(text) => updateField('notes', text)}
-            multiline
-            numberOfLines={3}
-          />
-        </Card>
-
-        {/* Save Button */}
-        <Button
-          title={isSaved ? '✓ Saved' : 'Save Log'}
-          onPress={handleSave}
-          variant={isSaved ? 'secondary' : 'primary'}
-          fullWidth
-          loading={isLoading}
-        />
-
-        {/* Recent Logs History */}
-        <RecentLogsSection
-          recentLogs={recentLogs}
-          selectedDate={selectedDate}
-          onSelectDate={(date) => setSelectedDate(date)}
-        />
+        )}
       </ScrollView>
+
+      {/* ── FAB ── */}
+      <TouchableOpacity
+        onPress={() => openLogModal(today())}
+        activeOpacity={0.8}
+        style={styles.fab}
+      >
+        <Ionicons name="add" size={28} color="#fff" />
+      </TouchableOpacity>
+
+      {/* ── Log Entry Modal ── */}
+      <Modal visible={modalVisible} animationType="slide" presentationStyle="pageSheet">
+        <SafeAreaView style={styles.modalSafe}>
+          {/* Modal Header */}
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={closeModal} activeOpacity={0.7}>
+              <Text style={styles.modalCancel}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>
+              {editingLog?.date === today() ? 'Today' : editingLog?.date ? formatDisplayDate(editingLog.date, true) : ''}
+            </Text>
+            <TouchableOpacity onPress={handleSave} activeOpacity={0.7}>
+              <Text style={styles.modalSave}>Save</Text>
+            </TouchableOpacity>
+          </View>
+
+          <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+            <ScrollView
+              contentContainerStyle={styles.modalContent}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              {editingLog && (
+                <>
+                  {/* Flow */}
+                  <Card style={styles.section}>
+                    <FlowSelector
+                      value={editingLog.flow}
+                      onChange={(flow: FlowIntensity) => updateField('flow', flow)}
+                    />
+                  </Card>
+
+                  {/* Mood */}
+                  <Card style={styles.section}>
+                    <MoodSelector
+                      value={editingLog.mood}
+                      onChange={(moods: MoodType[]) => updateField('mood', moods)}
+                    />
+                  </Card>
+
+                  {/* Symptoms */}
+                  <Card style={styles.section}>
+                    <SymptomGrid
+                      values={{
+                        crampsSeverity: editingLog.crampsSeverity,
+                        headacheSeverity: editingLog.headacheSeverity,
+                        acneSeverity: editingLog.acneSeverity,
+                        bloatingSeverity: editingLog.bloatingSeverity,
+                        backPainSeverity: editingLog.backPainSeverity,
+                        breastTendernessSeverity: editingLog.breastTendernessSeverity,
+                      }}
+                      onChange={(field, severity) => updateField(field as keyof DailyLog, severity as any)}
+                    />
+                  </Card>
+
+                  {/* Cervical Mucus */}
+                  {settings.fertilityTrackingEnabled && (
+                    <Card style={styles.section}>
+                      <Text style={styles.sectionLabel}>Cervical Mucus</Text>
+                      <View style={styles.mucusRow}>
+                        {CERVICAL_MUCUS_OPTIONS.map((option) => {
+                          const isSelected = editingLog.discharge === option.value;
+                          return (
+                            <TouchableOpacity
+                              key={option.value}
+                              onPress={() => updateField('discharge', isSelected ? null : option.value)}
+                              activeOpacity={0.7}
+                              style={[styles.mucusChip, isSelected && styles.mucusChipSelected]}
+                            >
+                              <Text style={[styles.mucusLabel, isSelected && styles.mucusLabelSelected]}>{option.label}</Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    </Card>
+                  )}
+
+                  {/* Libido */}
+                  <Card style={styles.section}>
+                    <SeveritySlider label="Libido" value={editingLog.libido} onChange={(s) => updateField('libido', s)} />
+                  </Card>
+
+                  {/* Biometrics */}
+                  <Card style={styles.section}>
+                    <Text style={styles.sectionLabel}>Biometrics</Text>
+                    <View style={styles.bioGrid}>
+                      <BioInput label="Sleep" unit="hrs" value={editingLog.sleepHours} onChange={(v) => updateField('sleepHours', v)} />
+                      <BioInput label="Exercise" unit="min" value={editingLog.exerciseMinutes} onChange={(v) => updateField('exerciseMinutes', v ? Math.round(v) : null)} />
+                      <BioInput label="Water" unit={settings.waterUnit} value={editingLog.waterIntakeMl} onChange={(v) => updateField('waterIntakeMl', v ? Math.round(v) : null)} />
+                      <BioInput label="Temp" unit={settings.temperatureUnit === 'celsius' ? '°C' : '°F'} value={editingLog.bodyTemperature} onChange={(v) => updateField('bodyTemperature', v)} />
+                      <BioInput label="BBT" unit={settings.temperatureUnit === 'celsius' ? '°C' : '°F'} value={editingLog.basalBodyTemperature} onChange={(v) => updateField('basalBodyTemperature', v)} />
+                      <BioInput label="Weight" unit={settings.weightUnit} value={editingLog.weight} onChange={(v) => updateField('weight', v)} />
+                    </View>
+                  </Card>
+
+                  {/* Medication */}
+                  <Card style={styles.section}>
+                    <Text style={styles.sectionLabel}>Medication</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="e.g. Ibuprofen, Birth control"
+                      placeholderTextColor={colors.secondary[400]}
+                      value={editingLog.medication.join(', ')}
+                      onChangeText={(text) => {
+                        const meds = text.split(',').map((s) => s.trim()).filter(Boolean);
+                        updateField('medication', meds);
+                      }}
+                    />
+                  </Card>
+
+                  {/* Notes */}
+                  <Card style={styles.section}>
+                    <Text style={styles.sectionLabel}>Notes</Text>
+                    <TextInput
+                      style={[styles.textInput, { minHeight: 80, textAlignVertical: 'top' }]}
+                      placeholder="Any additional notes..."
+                      placeholderTextColor={colors.secondary[400]}
+                      value={editingLog.notes}
+                      onChangeText={(text) => updateField('notes', text)}
+                      multiline
+                      numberOfLines={3}
+                    />
+                  </Card>
+
+                  {/* Save button inside modal */}
+                  <Button
+                    title="Save Log"
+                    onPress={handleSave}
+                    variant="primary"
+                    fullWidth
+                    loading={isLoading}
+                  />
+                </>
+              )}
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
 
-// ── Recent Logs Section ─────────────────────────────────────
+// ── Log History Card ────────────────────────────────────────
 
-import { MOOD_OPTIONS } from '@src/constants/symptoms';
-import { SEVERITY_LABELS } from '@src/constants/symptoms';
+function LogHistoryCard({ log, onPress }: { log: DailyLog; onPress: () => void }) {
+  const moodEmojis = log.mood
+    .map((m) => MOOD_OPTIONS.find((o) => o.value === m)?.emoji)
+    .filter(Boolean)
+    .join(' ');
 
-function RecentLogsSection({
-  recentLogs,
-  selectedDate,
-  onSelectDate,
-}: {
-  recentLogs: DailyLog[];
-  selectedDate: string;
-  onSelectDate: (date: string) => void;
-}) {
-  if (recentLogs.length === 0) return null;
+  const symptomCount = [
+    log.crampsSeverity, log.headacheSeverity, log.acneSeverity,
+    log.bloatingSeverity, log.backPainSeverity, log.breastTendernessSeverity,
+  ].filter((s) => s > 0).length;
 
-  // Sort by date descending for display
-  const sortedLogs = [...recentLogs].sort((a, b) => b.date.localeCompare(a.date));
+  const isToday = log.date === today();
 
   return (
-    <View style={recentStyles.container}>
-      <Text style={recentStyles.title}>Recent Logs</Text>
-      <View style={recentStyles.list}>
-        {sortedLogs.map((logItem) => {
-          const isActive = logItem.date === selectedDate;
-          const moodEmojis = logItem.mood
-            .map((m) => MOOD_OPTIONS.find((o) => o.value === m)?.emoji)
-            .filter(Boolean)
-            .join(' ');
-
-          const hasSymptoms = [
-            logItem.crampsSeverity,
-            logItem.headacheSeverity,
-            logItem.acneSeverity,
-            logItem.bloatingSeverity,
-            logItem.backPainSeverity,
-            logItem.breastTendernessSeverity,
-          ].some((s) => s > 0);
-
-          return (
-            <TouchableOpacity
-              key={logItem.date}
-              onPress={() => onSelectDate(logItem.date)}
-              activeOpacity={0.7}
-              style={[recentStyles.logRow, isActive && recentStyles.logRowActive]}
-            >
-              <View style={recentStyles.logDateCol}>
-                <Text style={[recentStyles.logDate, isActive && recentStyles.logDateActive]}>
-                  {logItem.date === today() ? 'Today' : formatDisplayDate(logItem.date)}
-                </Text>
-              </View>
-              <View style={recentStyles.logDetails}>
-                {moodEmojis ? (
-                  <Text style={recentStyles.logMoods}>{moodEmojis}</Text>
-                ) : null}
-                {logItem.flow && (
-                  <View style={recentStyles.flowBadge}>
-                    <Ionicons name="water" size={10} color={colors.phase.menstruation} />
-                  </View>
-                )}
-                {hasSymptoms && (
-                  <Ionicons name="pulse-outline" size={14} color={colors.accent[500]} />
-                )}
-              </View>
-              <Ionicons name="chevron-forward" size={16} color={colors.secondary[300]} />
-            </TouchableOpacity>
-          );
-        })}
+    <TouchableOpacity onPress={onPress} activeOpacity={0.7} style={styles.historyCard}>
+      <View style={styles.historyDateCol}>
+        <Text style={styles.historyDate}>{isToday ? 'Today' : formatDisplayDate(log.date)}</Text>
       </View>
-    </View>
+      <View style={styles.historyBody}>
+        {moodEmojis ? <Text style={styles.historyMoods}>{moodEmojis}</Text> : null}
+        {log.flow && (
+          <View style={styles.historyBadge}>
+            <Ionicons name="water" size={10} color={colors.phase.menstruation} />
+            <Text style={styles.historyBadgeText}>{formatFlowIntensity(log.flow)}</Text>
+          </View>
+        )}
+        {symptomCount > 0 && (
+          <View style={styles.historyBadge}>
+            <Ionicons name="pulse-outline" size={10} color={colors.accent[500]} />
+            <Text style={styles.historyBadgeText}>{symptomCount} symptom{symptomCount > 1 ? 's' : ''}</Text>
+          </View>
+        )}
+        {log.sleepHours !== null && (
+          <View style={styles.historyBadge}>
+            <Ionicons name="moon-outline" size={10} color={colors.phase.luteal} />
+            <Text style={styles.historyBadgeText}>{log.sleepHours}h</Text>
+          </View>
+        )}
+      </View>
+      <Ionicons name="chevron-forward" size={16} color={colors.secondary[300]} />
+    </TouchableOpacity>
   );
 }
 
-const recentStyles = StyleSheet.create({
-  container: { marginTop: 8, gap: 8 },
-  title: {
-    ...typography.bodyBold,
-    color: colors.text.primary,
-  },
-  list: { gap: 4 },
-  logRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    backgroundColor: colors.surface.light,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.secondary[200],
-  },
-  logRowActive: {
-    borderColor: colors.primary[500],
-    backgroundColor: `${colors.primary[500]}08`,
-  },
-  logDateCol: { width: 70 },
-  logDate: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: colors.text.secondary,
-  },
-  logDateActive: {
-    color: colors.primary[600],
-    fontWeight: '600',
-  },
-  logDetails: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  logMoods: { fontSize: 16 },
-  flowBadge: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: `${colors.phase.menstruation}20`,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
-
 // ── Biometric Input Helper ──────────────────────────────────
 
-function BiometricInput({
-  label,
-  unit,
-  value,
-  onChange,
-  keyboardType = 'decimal-pad',
-}: {
-  label: string;
-  unit: string;
-  value: number | null;
-  onChange: (value: number | null) => void;
-  keyboardType?: 'decimal-pad' | 'number-pad';
+function BioInput({ label, unit, value, onChange }: {
+  label: string; unit: string; value: number | null; onChange: (v: number | null) => void;
 }) {
   return (
     <View style={styles.bioItem}>
       <Text style={styles.bioLabel}>{label}</Text>
       <View style={styles.bioInputRow}>
         <TextInput
-          style={styles.bioInput}
-          keyboardType={keyboardType}
+          style={styles.bioInputText}
+          keyboardType="decimal-pad"
           value={value !== null ? String(value) : ''}
-          onChangeText={(text) => {
-            if (text === '') {
-              onChange(null);
-            } else {
-              const num = parseFloat(text);
-              if (!isNaN(num)) onChange(num);
-            }
-          }}
+          onChangeText={(t) => { if (t === '') onChange(null); else { const n = parseFloat(t); if (!isNaN(n)) onChange(n); } }}
           placeholder="—"
           placeholderTextColor={colors.secondary[300]}
         />
@@ -454,79 +356,73 @@ function BiometricInput({
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background.light },
-  content: { paddingHorizontal: 16, paddingBottom: 40, gap: 12 },
-  dateHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 16,
+  feedContent: { paddingHorizontal: 16, paddingBottom: 100, gap: 10 },
+  headerRow: { paddingTop: 16, paddingBottom: 8 },
+  screenTitle: { ...typography.h2, color: colors.text.primary },
+  todayCard: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: colors.surface.light, borderRadius: 16, padding: 16,
+    borderWidth: 2, borderColor: colors.primary[500],
   },
-  dateArrow: { padding: 8 },
-  dateText: {
-    ...typography.h3,
-    color: colors.text.primary,
-    textAlign: 'center',
+  todayCardLogged: { borderColor: colors.primary[200] },
+  todayLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
+  todayTitle: { ...typography.bodyBold, color: colors.text.primary },
+  todaySubtext: { ...typography.small, color: colors.text.secondary, marginTop: 2 },
+  sectionTitle: { ...typography.bodyBold, color: colors.text.primary, marginTop: 12, marginBottom: 4 },
+  historyCard: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: colors.surface.light, borderRadius: 14, padding: 14,
+    borderWidth: 1, borderColor: colors.secondary[200],
   },
-  dateSubtext: {
-    fontSize: 12,
-    color: colors.primary[600],
-    textAlign: 'center',
+  historyDateCol: { width: 64 },
+  historyDate: { fontSize: 13, fontWeight: '600', color: colors.text.secondary },
+  historyBody: { flex: 1, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6 },
+  historyMoods: { fontSize: 16 },
+  historyBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    backgroundColor: colors.secondary[50], borderRadius: 8, paddingHorizontal: 6, paddingVertical: 3,
   },
+  historyBadgeText: { fontSize: 11, color: colors.text.secondary },
+  emptyState: { alignItems: 'center', paddingVertical: 48, gap: 8 },
+  emptyTitle: { ...typography.bodyBold, color: colors.text.secondary },
+  emptyDesc: { ...typography.small, color: colors.text.muted, textAlign: 'center' },
+  fab: {
+    position: 'absolute', bottom: 24, right: 20,
+    width: 56, height: 56, borderRadius: 28,
+    backgroundColor: colors.primary[500], alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 5,
+  },
+  // Modal
+  modalSafe: { flex: 1, backgroundColor: colors.background.light },
+  modalHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.secondary[200],
+  },
+  modalCancel: { fontSize: 16, color: colors.text.secondary },
+  modalTitle: { ...typography.bodyBold, color: colors.text.primary },
+  modalSave: { fontSize: 16, fontWeight: '600', color: colors.primary[600] },
+  modalContent: { paddingHorizontal: 16, paddingVertical: 16, paddingBottom: 40, gap: 12 },
   section: { gap: 8 },
   sectionLabel: { fontSize: 14, fontWeight: '500', color: colors.secondary[600] },
-  mucusRow: { gap: 6 },
+  mucusRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   mucusChip: {
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    backgroundColor: colors.secondary[50],
-    borderWidth: 1.5,
-    borderColor: 'transparent',
+    paddingVertical: 8, paddingHorizontal: 12, borderRadius: 10,
+    backgroundColor: colors.secondary[50], borderWidth: 1.5, borderColor: 'transparent',
   },
-  mucusChipSelected: {
-    backgroundColor: `${colors.phase.fertile}15`,
-    borderColor: colors.phase.fertile,
-  },
+  mucusChipSelected: { backgroundColor: `${colors.phase.fertile}15`, borderColor: colors.phase.fertile },
   mucusLabel: { fontSize: 13, fontWeight: '500', color: colors.secondary[600] },
   mucusLabelSelected: { color: colors.phase.fertile },
-  mucusDesc: { fontSize: 11, color: colors.secondary[400], marginTop: 2 },
-  mucusDescSelected: { color: colors.phase.fertile },
-  biometricsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  bioItem: {
-    width: '47%',
-    flexGrow: 1,
-  },
+  bioGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  bioItem: { width: '47%', flexGrow: 1 },
   bioLabel: { fontSize: 12, color: colors.secondary[500], marginBottom: 4 },
   bioInputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.secondary[50],
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: colors.secondary[50], borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8,
   },
-  bioInput: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text.primary,
-    padding: 0,
-  },
+  bioInputText: { flex: 1, fontSize: 16, fontWeight: '600', color: colors.text.primary, padding: 0 },
   bioUnit: { fontSize: 12, color: colors.secondary[400], marginLeft: 4 },
   textInput: {
-    backgroundColor: colors.secondary[50],
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
-    color: colors.text.primary,
-  },
-  notesInput: {
-    minHeight: 80,
-    textAlignVertical: 'top',
+    backgroundColor: colors.secondary[50], borderRadius: 10,
+    paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: colors.text.primary,
   },
 });
