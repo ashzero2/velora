@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Luna",
-    "slug": "luna-period-tracker",
+    "name": "Velora",
+    "slug": "velora-period-tracker",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "luna",
+    "scheme": "velora",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {

@@ -1,5 +1,5 @@
 // ============================================================
-// Luna — useDatabase Hook
+// Velora — useDatabase Hook
 // Re-exports expo-sqlite's useSQLiteContext for convenience.
 // ============================================================
 

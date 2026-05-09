@@ -1,5 +1,5 @@
 // ============================================================
-// Luna — Display Formatting Utilities
+// Velora — Display Formatting Utilities
 // ============================================================
 
 import { CyclePhase, FlowIntensity } from '@src/types';

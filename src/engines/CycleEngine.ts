@@ -1,5 +1,5 @@
 // ============================================================
-// Luna — CycleEngine
+// Velora — CycleEngine
 // Pure functions for cycle phase calculation and validation.
 // No side effects, no UI dependencies, no database access.
 // ============================================================

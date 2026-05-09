@@ -1,5 +1,5 @@
 // ============================================================
-// Luna — useCurrentPhase Hook
+// Velora — useCurrentPhase Hook
 // Derives current phase info from cycle and settings stores.
 // ============================================================
 

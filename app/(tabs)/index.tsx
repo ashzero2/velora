@@ -70,7 +70,7 @@ export default function HomeScreen() {
       >
         {/* Header */}
         <View className="px-6 pt-4 pb-2">
-          <Text className="text-2xl font-bold text-secondary-900">Luna</Text>
+          <Text className="text-2xl font-bold text-secondary-900">Velora</Text>
           <Text className="text-sm text-secondary-500">
             {formatDisplayDate(today(), true)}
           </Text>

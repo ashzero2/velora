@@ -1,5 +1,5 @@
 // ============================================================
-// Luna — Database Schema
+// Velora — Database Schema
 // SQLite CREATE TABLE statements for Phase 1
 // ============================================================
 

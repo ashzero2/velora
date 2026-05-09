@@ -1,5 +1,5 @@
 // ============================================================
-// Luna — ID Generation Utility
+// Velora — ID Generation Utility
 // ============================================================
 
 import { v4 as uuidv4 } from 'uuid';

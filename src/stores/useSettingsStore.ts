@@ -1,5 +1,5 @@
 // ============================================================
-// Luna — Settings Store (Zustand)
+// Velora — Settings Store (Zustand)
 // Manages onboarding data and user settings.
 // Actions call SettingsRepository then update state.
 // ============================================================

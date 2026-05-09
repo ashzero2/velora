@@ -1,5 +1,5 @@
 // ============================================================
-// Luna — Phase Definitions & Descriptions
+// Velora — Phase Definitions & Descriptions
 // Sources: Cleveland Clinic (R1), Geisinger Health (R6),
 //          Harvard Apple Women's Health Study (R6)
 // ============================================================

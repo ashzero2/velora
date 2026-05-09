@@ -1,5 +1,5 @@
 // ============================================================
-// Luna — Date Utility Functions
+// Velora — Date Utility Functions
 // Wraps date-fns for consistent date handling
 // ============================================================
 

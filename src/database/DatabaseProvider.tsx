@@ -1,5 +1,5 @@
 // ============================================================
-// Luna — Database Provider
+// Velora — Database Provider
 // Thin wrapper around expo-sqlite's SQLiteProvider with
 // automatic migration on initialization.
 // ============================================================
@@ -9,7 +9,7 @@ import { SQLiteProvider } from 'expo-sqlite';
 import { View, ActivityIndicator } from 'react-native';
 import { initializeDatabase } from './migrations';
 
-const DATABASE_NAME = 'luna.db';
+const DATABASE_NAME = 'velora.db';
 
 function LoadingFallback() {
   return (

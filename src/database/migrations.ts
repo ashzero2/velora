@@ -1,5 +1,5 @@
 // ============================================================
-// Luna — Database Migrations
+// Velora — Database Migrations
 // Version-based migration runner for schema evolution
 // ============================================================
 

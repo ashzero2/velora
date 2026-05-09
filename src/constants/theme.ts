@@ -1,5 +1,5 @@
 // ============================================================
-// Luna — Design Tokens
+// Velora — Design Tokens
 // Calm, neutral, non-stereotypical color palette
 // ============================================================
 

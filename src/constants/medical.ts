@@ -1,5 +1,5 @@
 // ============================================================
-// Luna — Medical Constants
+// Velora — Medical Constants
 // Based on ACOG Committee Opinion 651, Cleveland Clinic, FIGO
 // ============================================================
 
@@ -60,4 +60,4 @@ export const MEDICAL_DISCLAIMER =
 
 /** Privacy notice text */
 export const PRIVACY_NOTICE =
-  'Your data stays on your device. Luna does not send any health data to external servers.';
+  'Your data stays on your device. Velora does not send any health data to external servers.';

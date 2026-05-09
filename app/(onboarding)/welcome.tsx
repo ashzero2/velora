@@ -26,7 +26,7 @@ export default function WelcomeScreen() {
 
           <View className="items-center gap-3">
             <Text className="text-3xl font-bold text-secondary-900">
-              Luna
+              Velora
             </Text>
             <Text className="text-lg text-secondary-500 text-center">
               Your cycle, understood.

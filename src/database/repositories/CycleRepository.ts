@@ -1,5 +1,5 @@
 // ============================================================
-// Luna — Cycle Repository
+// Velora — Cycle Repository
 // CRUD operations for the cycles table.
 // All functions accept a SQLiteDatabase instance.
 // ============================================================

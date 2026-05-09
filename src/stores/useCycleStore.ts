@@ -1,5 +1,5 @@
 // ============================================================
-// Luna — Cycle Store (Zustand)
+// Velora — Cycle Store (Zustand)
 // Manages cycle list, current cycle, and phase info.
 // Actions call CycleRepository then update state.
 // ============================================================

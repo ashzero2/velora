@@ -1,5 +1,5 @@
 // ============================================================
-// Luna — Settings Repository
+// Velora — Settings Repository
 // Key-value settings storage operations.
 // All functions accept a SQLiteDatabase instance.
 // ============================================================
