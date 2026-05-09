@@ -4,10 +4,10 @@
 // ============================================================
 
 import type { SQLiteDatabase } from 'expo-sqlite';
-import { SCHEMA_STATEMENTS, SCHEMA_V2_STATEMENTS } from './schema';
+import { SCHEMA_STATEMENTS, SCHEMA_V2_STATEMENTS, SCHEMA_V3_STATEMENTS } from './schema';
 
 /** Current database schema version */
-const CURRENT_VERSION = 2;
+const CURRENT_VERSION = 3;
 
 /**
  * Initialize the database: create tables and run any pending migrations.
@@ -31,6 +31,10 @@ export async function initializeDatabase(db: SQLiteDatabase): Promise<void> {
     await migrateToV2(db);
   }
 
+  if (currentVersion < 3) {
+    await migrateToV3(db);
+  }
+
   // Set the current version
   await db.execAsync(`PRAGMA user_version = ${CURRENT_VERSION};`);
 }
@@ -49,6 +53,15 @@ async function migrateToV1(db: SQLiteDatabase): Promise<void> {
  */
 async function migrateToV2(db: SQLiteDatabase): Promise<void> {
   for (const statement of SCHEMA_V2_STATEMENTS) {
+    await db.execAsync(statement);
+  }
+}
+
+/**
+ * Migration v2 → v3: Add daily_logs table for Phase 3.
+ */
+async function migrateToV3(db: SQLiteDatabase): Promise<void> {
+  for (const statement of SCHEMA_V3_STATEMENTS) {
     await db.execAsync(statement);
   }
 }

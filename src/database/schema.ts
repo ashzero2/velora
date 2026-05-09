@@ -1,6 +1,6 @@
 // ============================================================
 // Velora — Database Schema
-// SQLite CREATE TABLE statements for Phase 1 + Phase 2
+// SQLite CREATE TABLE statements for Phase 1 + Phase 2 + Phase 3
 // ============================================================
 
 /**
@@ -84,4 +84,59 @@ export const SCHEMA_STATEMENTS = [
 export const SCHEMA_V2_STATEMENTS = [
   CREATE_PREDICTIONS_TABLE,
   CREATE_PREDICTIONS_INDEX,
+];
+
+/**
+ * SQL to create the daily_logs table (Phase 3).
+ */
+export const CREATE_DAILY_LOGS_TABLE = `
+  CREATE TABLE IF NOT EXISTS daily_logs (
+    id TEXT PRIMARY KEY,
+    date TEXT NOT NULL UNIQUE,
+    cycle_id TEXT,
+    flow TEXT,
+    mood TEXT,
+    cramps_severity INTEGER DEFAULT 0,
+    headache_severity INTEGER DEFAULT 0,
+    acne_severity INTEGER DEFAULT 0,
+    bloating_severity INTEGER DEFAULT 0,
+    back_pain_severity INTEGER DEFAULT 0,
+    breast_tenderness_severity INTEGER DEFAULT 0,
+    libido INTEGER DEFAULT 0,
+    discharge TEXT,
+    sleep_hours REAL,
+    exercise_minutes INTEGER,
+    water_intake_ml INTEGER,
+    body_temperature REAL,
+    basal_body_temperature REAL,
+    weight REAL,
+    medication TEXT,
+    notes TEXT DEFAULT '',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY (cycle_id) REFERENCES cycles(id)
+  );
+`;
+
+/**
+ * Index on daily_logs.date for fast lookups by date.
+ */
+export const CREATE_DAILY_LOGS_DATE_INDEX = `
+  CREATE INDEX IF NOT EXISTS idx_daily_logs_date ON daily_logs(date);
+`;
+
+/**
+ * Index on daily_logs.cycle_id for fast lookups by cycle.
+ */
+export const CREATE_DAILY_LOGS_CYCLE_INDEX = `
+  CREATE INDEX IF NOT EXISTS idx_daily_logs_cycle ON daily_logs(cycle_id);
+`;
+
+/**
+ * Phase 3 schema statements (daily_logs table).
+ */
+export const SCHEMA_V3_STATEMENTS = [
+  CREATE_DAILY_LOGS_TABLE,
+  CREATE_DAILY_LOGS_DATE_INDEX,
+  CREATE_DAILY_LOGS_CYCLE_INDEX,
 ];
