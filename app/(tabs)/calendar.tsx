@@ -38,25 +38,28 @@ export default function CalendarScreen() {
   const markedDates = useMemo<MarkedDates>(() => {
     const marks: MarkedDates = {};
 
+    // Helper: add a dot to a date only if a dot with the same key doesn't exist
+    const addDot = (dateStr: string, key: string, color: string) => {
+      const existing = marks[dateStr]?.dots ?? [];
+      if (existing.some((dot) => dot.key === key)) return; // deduplicate
+      marks[dateStr] = {
+        ...marks[dateStr],
+        marked: true,
+        dots: [...existing, { key, color }],
+      };
+    };
+
     // 1. Mark historical period days from all cycles
     for (const cycle of cycles) {
       const periodEnd = cycle.periodEndDate ?? cycle.startDate;
       const periodDays = diffDays(cycle.startDate, periodEnd) + 1;
 
       for (let d = 0; d < periodDays; d++) {
-        const dateStr = addDays(cycle.startDate, d);
-        marks[dateStr] = {
-          ...marks[dateStr],
-          marked: true,
-          dots: [
-            ...(marks[dateStr]?.dots ?? []),
-            { key: 'period', color: MARKER_COLORS.period },
-          ],
-        };
+        addDot(addDays(cycle.startDate, d), 'period', MARKER_COLORS.period);
       }
     }
 
-    // 2. Mark predicted period days
+    // 2. Mark predicted period days (skip if actual period already marked)
     if (prediction) {
       const predStart = prediction.predictedPeriodStart;
       const predEnd = prediction.predictedPeriodEnd;
@@ -65,14 +68,7 @@ export default function CalendarScreen() {
       for (let d = 0; d < predDays; d++) {
         const dateStr = addDays(predStart, d);
         if (!marks[dateStr]?.dots?.some((dot) => dot.key === 'period')) {
-          marks[dateStr] = {
-            ...marks[dateStr],
-            marked: true,
-            dots: [
-              ...(marks[dateStr]?.dots ?? []),
-              { key: 'predicted', color: MARKER_COLORS.predictedPeriod },
-            ],
-          };
+          addDot(dateStr, 'predicted', MARKER_COLORS.predictedPeriod);
         }
       }
 
@@ -83,27 +79,11 @@ export default function CalendarScreen() {
         const fertileDays = diffDays(fertileStart, fertileEnd) + 1;
 
         for (let d = 0; d < fertileDays; d++) {
-          const dateStr = addDays(fertileStart, d);
-          marks[dateStr] = {
-            ...marks[dateStr],
-            marked: true,
-            dots: [
-              ...(marks[dateStr]?.dots ?? []),
-              { key: 'fertile', color: MARKER_COLORS.fertile },
-            ],
-          };
+          addDot(addDays(fertileStart, d), 'fertile', MARKER_COLORS.fertile);
         }
 
         // 4. Mark ovulation day
-        const ovDate = prediction.estimatedOvulationDate;
-        marks[ovDate] = {
-          ...marks[ovDate],
-          marked: true,
-          dots: [
-            ...(marks[ovDate]?.dots ?? []),
-            { key: 'ovulation', color: MARKER_COLORS.ovulation },
-          ],
-        };
+        addDot(prediction.estimatedOvulationDate, 'ovulation', MARKER_COLORS.ovulation);
       }
     }
 
