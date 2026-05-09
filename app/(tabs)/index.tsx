@@ -15,7 +15,7 @@ import { EmptyState } from '@src/components/ui/EmptyState';
 import { Button } from '@src/components/ui/Button';
 import { Card } from '@src/components/ui/Card';
 import { usePredictions } from '@src/hooks/usePredictions';
-import { useLogStore } from '@src/stores/useLogStore';
+import { useLogStore, createBlankLog } from '@src/stores/useLogStore';
 import { today, formatDisplayDate, nowISO } from '@src/utils/dateUtils';
 import { CyclePhase, MoodType } from '@src/types';
 import { colors } from '@src/constants/theme';
@@ -120,12 +120,10 @@ export default function HomeScreen() {
                 const newMoods = currentMoods.includes(mood)
                   ? currentMoods.filter((m) => m !== mood)
                   : [...currentMoods, mood];
-                if (todayLog) {
-                  upsertLog(db, { ...todayLog, mood: newMoods, updatedAt: nowISO() });
-                }
+                const logToUpdate = todayLog ?? createBlankLog(today(), currentCycle?.id ?? null);
+                upsertLog(db, { ...logToUpdate, mood: newMoods, updatedAt: nowISO() });
               }}
               onLogMore={() => {
-                // Navigate to Log tab — expo-router handles this via tab navigation
                 const { router } = require('expo-router');
                 router.navigate('/(tabs)/log');
               }}

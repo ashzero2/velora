@@ -31,6 +31,8 @@ export default function LogScreen() {
   const settings = useSettingsStore((s) => s.settings);
   const loadLogForDate = useLogStore((s) => s.loadLogForDate);
   const upsertLog = useLogStore((s) => s.upsertLog);
+  const recentLogs = useLogStore((s) => s.recentLogs);
+  const initLog = useLogStore((s) => s.initialize);
   const isLoading = useLogStore((s) => s.isLoading);
 
   const [selectedDate, setSelectedDate] = useState(today());
@@ -49,6 +51,11 @@ export default function LogScreen() {
     }
     setIsSaved(false);
   }, [db, loadLogForDate, currentCycle]);
+
+  // Initialize log store to load recent logs
+  useEffect(() => {
+    initLog(db);
+  }, [db, initLog]);
 
   useEffect(() => {
     loadDate(selectedDate);
@@ -270,10 +277,138 @@ export default function LogScreen() {
           fullWidth
           loading={isLoading}
         />
+
+        {/* Recent Logs History */}
+        <RecentLogsSection
+          recentLogs={recentLogs}
+          selectedDate={selectedDate}
+          onSelectDate={(date) => setSelectedDate(date)}
+        />
       </ScrollView>
     </SafeAreaView>
   );
 }
+
+// ── Recent Logs Section ─────────────────────────────────────
+
+import { MOOD_OPTIONS } from '@src/constants/symptoms';
+import { SEVERITY_LABELS } from '@src/constants/symptoms';
+
+function RecentLogsSection({
+  recentLogs,
+  selectedDate,
+  onSelectDate,
+}: {
+  recentLogs: DailyLog[];
+  selectedDate: string;
+  onSelectDate: (date: string) => void;
+}) {
+  if (recentLogs.length === 0) return null;
+
+  // Sort by date descending for display
+  const sortedLogs = [...recentLogs].sort((a, b) => b.date.localeCompare(a.date));
+
+  return (
+    <View style={recentStyles.container}>
+      <Text style={recentStyles.title}>Recent Logs</Text>
+      <View style={recentStyles.list}>
+        {sortedLogs.map((logItem) => {
+          const isActive = logItem.date === selectedDate;
+          const moodEmojis = logItem.mood
+            .map((m) => MOOD_OPTIONS.find((o) => o.value === m)?.emoji)
+            .filter(Boolean)
+            .join(' ');
+
+          const hasSymptoms = [
+            logItem.crampsSeverity,
+            logItem.headacheSeverity,
+            logItem.acneSeverity,
+            logItem.bloatingSeverity,
+            logItem.backPainSeverity,
+            logItem.breastTendernessSeverity,
+          ].some((s) => s > 0);
+
+          return (
+            <TouchableOpacity
+              key={logItem.date}
+              onPress={() => onSelectDate(logItem.date)}
+              activeOpacity={0.7}
+              style={[recentStyles.logRow, isActive && recentStyles.logRowActive]}
+            >
+              <View style={recentStyles.logDateCol}>
+                <Text style={[recentStyles.logDate, isActive && recentStyles.logDateActive]}>
+                  {logItem.date === today() ? 'Today' : formatDisplayDate(logItem.date)}
+                </Text>
+              </View>
+              <View style={recentStyles.logDetails}>
+                {moodEmojis ? (
+                  <Text style={recentStyles.logMoods}>{moodEmojis}</Text>
+                ) : null}
+                {logItem.flow && (
+                  <View style={recentStyles.flowBadge}>
+                    <Ionicons name="water" size={10} color={colors.phase.menstruation} />
+                  </View>
+                )}
+                {hasSymptoms && (
+                  <Ionicons name="pulse-outline" size={14} color={colors.accent[500]} />
+                )}
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={colors.secondary[300]} />
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+const recentStyles = StyleSheet.create({
+  container: { marginTop: 8, gap: 8 },
+  title: {
+    ...typography.bodyBold,
+    color: colors.text.primary,
+  },
+  list: { gap: 4 },
+  logRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    backgroundColor: colors.surface.light,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.secondary[200],
+  },
+  logRowActive: {
+    borderColor: colors.primary[500],
+    backgroundColor: `${colors.primary[500]}08`,
+  },
+  logDateCol: { width: 70 },
+  logDate: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: colors.text.secondary,
+  },
+  logDateActive: {
+    color: colors.primary[600],
+    fontWeight: '600',
+  },
+  logDetails: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  logMoods: { fontSize: 16 },
+  flowBadge: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: `${colors.phase.menstruation}20`,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});
 
 // ── Biometric Input Helper ──────────────────────────────────
 

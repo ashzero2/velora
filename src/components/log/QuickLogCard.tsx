@@ -78,14 +78,16 @@ const styles = StyleSheet.create({
   },
   moodRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 6,
+    justifyContent: 'center',
   },
   moodItem: {
     alignItems: 'center',
     justifyContent: 'center',
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
   },
   moodEmoji: {
     fontSize: 22,
