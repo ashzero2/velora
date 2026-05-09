@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from './Button';
+import { colors } from '@src/constants/theme';
 
 interface EmptyStateProps {
   icon?: keyof typeof Ionicons.glyphMap;
@@ -19,21 +20,22 @@ export function EmptyState({
   onAction,
 }: EmptyStateProps) {
   return (
-    <View className="items-center justify-center py-12 px-6">
-      <View className="bg-primary-50 rounded-full p-5 mb-4">
-        <Ionicons name={icon} size={40} color="#6b9080" />
+    <View style={styles.container}>
+      <View style={styles.iconWrap}>
+        <Ionicons name={icon} size={40} color={colors.primary[500]} />
       </View>
-      <Text className="text-lg font-semibold text-secondary-900 text-center mb-2">
-        {title}
-      </Text>
-      {description && (
-        <Text className="text-sm text-secondary-500 text-center mb-6 max-w-xs">
-          {description}
-        </Text>
-      )}
+      <Text style={styles.title}>{title}</Text>
+      {description && <Text style={styles.description}>{description}</Text>}
       {actionTitle && onAction && (
         <Button title={actionTitle} onPress={onAction} size="md" />
       )}
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: { alignItems: 'center', justifyContent: 'center', paddingVertical: 48, paddingHorizontal: 24 },
+  iconWrap: { backgroundColor: colors.primary[50], borderRadius: 9999, padding: 20, marginBottom: 16 },
+  title: { fontSize: 18, fontWeight: '600', color: colors.secondary[900], textAlign: 'center', marginBottom: 8 },
+  description: { fontSize: 14, color: colors.secondary[500], textAlign: 'center', marginBottom: 24, maxWidth: 280 },
+});

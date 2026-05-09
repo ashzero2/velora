@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, ScrollView } from 'react-native';
+import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDatabase } from '@src/hooks/useDatabase';
 import { useCycleStore } from '@src/stores/useCycleStore';
@@ -13,11 +13,8 @@ import { Button } from '@src/components/ui/Button';
 import { Card } from '@src/components/ui/Card';
 import { today, formatDisplayDate } from '@src/utils/dateUtils';
 import { CyclePhase } from '@src/types';
-import {
-  DEFAULT_CYCLE_LENGTH,
-  DEFAULT_PERIOD_LENGTH,
-  MEDICAL_DISCLAIMER,
-} from '@src/constants/medical';
+import { colors } from '@src/constants/theme';
+import { DEFAULT_CYCLE_LENGTH, DEFAULT_PERIOD_LENGTH, MEDICAL_DISCLAIMER } from '@src/constants/medical';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function HomeScreen() {
@@ -35,7 +32,6 @@ export default function HomeScreen() {
   const cycleDay = currentCycle ? getCurrentCycleDay(currentCycle.startDate) : 0;
   const currentPhase = phaseInfo?.phase ?? CyclePhase.UNKNOWN;
 
-  // Determine period action state
   const hasCycle = !!currentCycle;
   const periodEnded = hasCycle && !!currentCycle.periodEndDate;
   const periodOngoing = hasCycle && !currentCycle.periodEndDate;
@@ -44,11 +40,10 @@ export default function HomeScreen() {
   const handleEndPeriod = () => endPeriod(db, today());
   const handleStartNewCycle = () => startNewCycle(db, today());
 
-  // Empty state
   if (!hasCycle && !isLoading) {
     return (
-      <SafeAreaView className="flex-1 bg-secondary-50">
-        <View className="flex-1 justify-center">
+      <SafeAreaView style={styles.safe}>
+        <View style={{ flex: 1, justifyContent: 'center' }}>
           <EmptyState
             icon="flower-outline"
             title="No cycle data yet"
@@ -62,105 +57,68 @@ export default function HomeScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-secondary-50">
-      <ScrollView
-        className="flex-1"
-        contentContainerStyle={{ paddingBottom: 32 }}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Header */}
-        <View className="px-6 pt-4 pb-2">
-          <Text className="text-2xl font-bold text-secondary-900">Velora</Text>
-          <Text className="text-sm text-secondary-500">
-            {formatDisplayDate(today(), true)}
-          </Text>
+    <SafeAreaView style={styles.safe}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 32 }} showsVerticalScrollIndicator={false}>
+        <View style={styles.header}>
+          <Text style={styles.appName}>Velora</Text>
+          <Text style={styles.date}>{formatDisplayDate(today(), true)}</Text>
         </View>
 
-        {/* Cycle Ring */}
-        <View className="items-center py-6">
-          <CycleRing
-            cycleDay={Math.min(cycleDay, cycleLength)}
-            cycleLength={cycleLength}
-            periodLength={periodLength}
-            currentPhase={currentPhase}
-          />
+        <View style={styles.ringWrap}>
+          <CycleRing cycleDay={Math.min(cycleDay, cycleLength)} cycleLength={cycleLength} periodLength={periodLength} currentPhase={currentPhase} />
         </View>
 
-        <View className="px-6 gap-4">
-          {/* Phase Card */}
+        <View style={styles.content}>
           {phaseInfo && <PhaseCard phaseInfo={phaseInfo} />}
 
-          {/* Period Action */}
-          <Card variant="elevated" className="gap-3">
-            <Text className="text-sm font-semibold text-secondary-500 uppercase tracking-wide">
-              Period Status
-            </Text>
-
+          <Card variant="elevated" style={{ gap: 12 }}>
+            <Text style={styles.sectionTitle}>PERIOD STATUS</Text>
             {periodOngoing && (
-              <View className="gap-3">
-                <View className="flex-row items-center gap-2">
-                  <View className="w-2.5 h-2.5 rounded-full bg-menstruation" />
-                  <Text className="text-sm text-secondary-700">
-                    Period started {formatDisplayDate(currentCycle.startDate)}
-                  </Text>
+              <View style={{ gap: 12 }}>
+                <View style={styles.statusRow}>
+                  <View style={styles.statusDot} />
+                  <Text style={styles.statusText}>Period started {formatDisplayDate(currentCycle.startDate)}</Text>
                 </View>
-                <Button
-                  title="End Period"
-                  onPress={handleEndPeriod}
-                  variant="secondary"
-                  fullWidth
-                  loading={isLoading}
-                />
+                <Button title="End Period" onPress={handleEndPeriod} variant="secondary" fullWidth loading={isLoading} />
               </View>
             )}
-
             {periodEnded && (
-              <View className="gap-3">
-                <View className="flex-row items-center gap-2">
-                  <Ionicons name="checkmark-circle" size={18} color="#6b9080" />
-                  <Text className="text-sm text-secondary-700">
-                    Period ended {formatDisplayDate(currentCycle.periodEndDate!)}
-                  </Text>
+              <View style={{ gap: 12 }}>
+                <View style={styles.statusRow}>
+                  <Ionicons name="checkmark-circle" size={18} color={colors.primary[500]} />
+                  <Text style={styles.statusText}>Period ended {formatDisplayDate(currentCycle.periodEndDate!)}</Text>
                 </View>
-                <Button
-                  title="Start New Period"
-                  onPress={handleStartNewCycle}
-                  variant="outline"
-                  fullWidth
-                  loading={isLoading}
-                />
+                <Button title="Start New Period" onPress={handleStartNewCycle} variant="outline" fullWidth loading={isLoading} />
               </View>
             )}
           </Card>
 
-          {/* Cycle info summary */}
-          <Card className="gap-2">
-            <View className="flex-row justify-between">
-              <Text className="text-xs text-secondary-400">Cycle Length</Text>
-              <Text className="text-xs font-medium text-secondary-700">
-                {cycleLength} days
-              </Text>
-            </View>
-            <View className="flex-row justify-between">
-              <Text className="text-xs text-secondary-400">Period Length</Text>
-              <Text className="text-xs font-medium text-secondary-700">
-                {periodLength} days
-              </Text>
-            </View>
-            <View className="flex-row justify-between">
-              <Text className="text-xs text-secondary-400">Current Day</Text>
-              <Text className="text-xs font-medium text-secondary-700">
-                Day {cycleDay} of {cycleLength}
-              </Text>
-            </View>
+          <Card style={{ gap: 8 }}>
+            <View style={styles.infoRow}><Text style={styles.infoLabel}>Cycle Length</Text><Text style={styles.infoValue}>{cycleLength} days</Text></View>
+            <View style={styles.infoRow}><Text style={styles.infoLabel}>Period Length</Text><Text style={styles.infoValue}>{periodLength} days</Text></View>
+            <View style={styles.infoRow}><Text style={styles.infoLabel}>Current Day</Text><Text style={styles.infoValue}>Day {cycleDay} of {cycleLength}</Text></View>
           </Card>
 
-          {/* Medical disclaimer */}
-          <Text className="text-xs text-secondary-400 text-center leading-4 px-4">
-            {MEDICAL_DISCLAIMER}
-          </Text>
+          <Text style={styles.disclaimer}>{MEDICAL_DISCLAIMER}</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: colors.background.light },
+  header: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 8 },
+  appName: { fontSize: 24, fontWeight: '700', color: colors.secondary[900] },
+  date: { fontSize: 14, color: colors.secondary[500] },
+  ringWrap: { alignItems: 'center', paddingVertical: 24 },
+  content: { paddingHorizontal: 24, gap: 16 },
+  sectionTitle: { fontSize: 13, fontWeight: '600', color: colors.secondary[500], letterSpacing: 0.5 },
+  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  statusDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#c97b7b' },
+  statusText: { fontSize: 14, color: colors.secondary[700] },
+  infoRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  infoLabel: { fontSize: 12, color: colors.secondary[400] },
+  infoValue: { fontSize: 12, fontWeight: '500', color: colors.secondary[700] },
+  disclaimer: { fontSize: 12, color: colors.secondary[400], textAlign: 'center', lineHeight: 16, paddingHorizontal: 16 },
+});

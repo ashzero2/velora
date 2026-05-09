@@ -1,174 +1,129 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from '@src/components/ui/Button';
 import { TYPICAL_SYMPTOMS } from '@src/constants/medical';
+import { colors } from '@src/constants/theme';
 
 export default function PreferencesScreen() {
-  const params = useLocalSearchParams<{
-    lastPeriodStart: string;
-    avgCycleLength: string;
-    avgPeriodLength: string;
-  }>();
-
+  const params = useLocalSearchParams<{ lastPeriodStart: string; avgCycleLength: string; avgPeriodLength: string }>();
   const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>([]);
   const [isIrregular, setIsIrregular] = useState(false);
   const [fertilityTracking, setFertilityTracking] = useState(false);
 
   const toggleSymptom = (symptom: string) => {
-    setSelectedSymptoms((prev) =>
-      prev.includes(symptom)
-        ? prev.filter((s) => s !== symptom)
-        : [...prev, symptom],
-    );
+    setSelectedSymptoms((prev) => prev.includes(symptom) ? prev.filter((s) => s !== symptom) : [...prev, symptom]);
   };
 
-  const handleContinue = () => {
+  const nav = (symptoms: string[], irreg: boolean, fert: boolean) => {
     router.push({
       pathname: '/(onboarding)/complete',
-      params: {
-        ...params,
-        typicalSymptoms: JSON.stringify(selectedSymptoms),
-        isIrregular: String(isIrregular),
-        fertilityTracking: String(fertilityTracking),
-      },
-    });
-  };
-
-  const handleSkip = () => {
-    router.push({
-      pathname: '/(onboarding)/complete',
-      params: {
-        ...params,
-        typicalSymptoms: '[]',
-        isIrregular: 'false',
-        fertilityTracking: 'false',
-      },
+      params: { ...params, typicalSymptoms: JSON.stringify(symptoms), isIrregular: String(irreg), fertilityTracking: String(fert) },
     });
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-secondary-50">
-      <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 40 }}>
-        <View className="px-6 py-8 gap-6">
-          {/* Back button + Step indicator */}
-          <View className="flex-row items-center justify-between">
-            <TouchableOpacity onPress={() => router.back()} className="p-1">
-              <Ionicons name="arrow-back" size={24} color="#57534e" />
+    <SafeAreaView style={styles.safe}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 40 }}>
+        <View style={styles.body}>
+          <View style={styles.headerRow}>
+            <TouchableOpacity onPress={() => router.back()} style={{ padding: 4 }}>
+              <Ionicons name="arrow-back" size={24} color={colors.secondary[600]} />
             </TouchableOpacity>
-            <View className="flex-row gap-2">
-              <View className="w-8 h-1 rounded-full bg-primary-500" />
-              <View className="w-8 h-1 rounded-full bg-primary-500" />
-              <View className="w-8 h-1 rounded-full bg-primary-500" />
-              <View className="w-8 h-1 rounded-full bg-secondary-200" />
+            <View style={styles.stepRow}>
+              <View style={[styles.stepDot, styles.stepActive]} />
+              <View style={[styles.stepDot, styles.stepActive]} />
+              <View style={[styles.stepDot, styles.stepActive]} />
+              <View style={styles.stepDot} />
             </View>
-            <TouchableOpacity onPress={handleSkip} className="p-1">
-              <Text className="text-sm text-primary-600 font-medium">Skip</Text>
+            <TouchableOpacity onPress={() => nav([], false, false)} style={{ padding: 4 }}>
+              <Text style={styles.skipText}>Skip</Text>
             </TouchableOpacity>
           </View>
 
-          {/* Title */}
-          <View className="gap-2">
-            <Text className="text-2xl font-bold text-secondary-900">
-              Preferences
-            </Text>
-            <Text className="text-sm text-secondary-500 leading-5">
-              Optional — help us personalize your experience. You can always
-              change these later.
-            </Text>
+          <View style={{ gap: 8 }}>
+            <Text style={styles.title}>Preferences</Text>
+            <Text style={styles.subtitle}>Optional — help us personalize your experience. You can always change these later.</Text>
           </View>
 
-          {/* Typical Symptoms */}
-          <View className="gap-2">
-            <Text className="text-sm font-medium text-secondary-600">
-              Typical symptoms you experience
-            </Text>
-            <View className="flex-row flex-wrap gap-2">
+          <View style={{ gap: 8 }}>
+            <Text style={styles.label}>Typical symptoms you experience</Text>
+            <View style={styles.chipWrap}>
               {TYPICAL_SYMPTOMS.map((symptom) => {
-                const isSelected = selectedSymptoms.includes(symptom);
+                const sel = selectedSymptoms.includes(symptom);
                 return (
                   <TouchableOpacity
                     key={symptom}
                     onPress={() => toggleSymptom(symptom)}
                     activeOpacity={0.7}
-                    className={`
-                      rounded-full px-4 py-2 border
-                      ${isSelected
-                        ? 'bg-primary-500 border-primary-500'
-                        : 'bg-white border-secondary-200'
-                      }
-                    `}
+                    style={[styles.chip, sel ? styles.chipSelected : styles.chipDefault]}
                   >
-                    <Text
-                      className={`text-sm ${isSelected ? 'text-white font-medium' : 'text-secondary-700'}`}
-                    >
-                      {symptom}
-                    </Text>
+                    <Text style={[styles.chipText, sel && styles.chipTextSelected]}>{symptom}</Text>
                   </TouchableOpacity>
                 );
               })}
             </View>
           </View>
 
-          {/* Irregular cycle toggle */}
-          <TouchableOpacity
-            onPress={() => setIsIrregular(!isIrregular)}
-            activeOpacity={0.7}
-            className="flex-row items-center justify-between bg-white rounded-xl p-4 border border-secondary-200"
-          >
-            <View className="flex-1 mr-3">
-              <Text className="text-sm font-medium text-secondary-900">
-                My cycles are irregular
-              </Text>
-              <Text className="text-xs text-secondary-400 mt-0.5">
-                Cycles vary by more than 8 days in length
-              </Text>
+          {/* Irregular toggle */}
+          <TouchableOpacity onPress={() => setIsIrregular(!isIrregular)} activeOpacity={0.7} style={styles.toggleRow}>
+            <View style={{ flex: 1, marginRight: 12 }}>
+              <Text style={styles.toggleTitle}>My cycles are irregular</Text>
+              <Text style={styles.toggleDesc}>Cycles vary by more than 8 days in length</Text>
             </View>
-            <View
-              className={`w-11 h-6 rounded-full justify-center px-0.5 ${isIrregular ? 'bg-primary-500' : 'bg-secondary-200'}`}
-            >
-              <View
-                className={`w-5 h-5 rounded-full bg-white ${isIrregular ? 'self-end' : 'self-start'}`}
-              />
+            <View style={[styles.switch, isIrregular && styles.switchOn]}>
+              <View style={[styles.switchThumb, isIrregular && styles.switchThumbOn]} />
             </View>
           </TouchableOpacity>
 
-          {/* Fertility tracking toggle */}
-          <TouchableOpacity
-            onPress={() => setFertilityTracking(!fertilityTracking)}
-            activeOpacity={0.7}
-            className="flex-row items-center justify-between bg-white rounded-xl p-4 border border-secondary-200"
-          >
-            <View className="flex-1 mr-3">
-              <Text className="text-sm font-medium text-secondary-900">
-                Enable fertility tracking
-              </Text>
-              <Text className="text-xs text-secondary-400 mt-0.5">
-                Shows estimated ovulation and fertile window
-              </Text>
+          {/* Fertility toggle */}
+          <TouchableOpacity onPress={() => setFertilityTracking(!fertilityTracking)} activeOpacity={0.7} style={styles.toggleRow}>
+            <View style={{ flex: 1, marginRight: 12 }}>
+              <Text style={styles.toggleTitle}>Enable fertility tracking</Text>
+              <Text style={styles.toggleDesc}>Shows estimated ovulation and fertile window</Text>
             </View>
-            <View
-              className={`w-11 h-6 rounded-full justify-center px-0.5 ${fertilityTracking ? 'bg-primary-500' : 'bg-secondary-200'}`}
-            >
-              <View
-                className={`w-5 h-5 rounded-full bg-white ${fertilityTracking ? 'self-end' : 'self-start'}`}
-              />
+            <View style={[styles.switch, fertilityTracking && styles.switchOn]}>
+              <View style={[styles.switchThumb, fertilityTracking && styles.switchThumbOn]} />
             </View>
           </TouchableOpacity>
         </View>
       </ScrollView>
-
-      {/* CTA */}
-      <View className="px-6 pb-6">
-        <Button
-          title="Continue"
-          onPress={handleContinue}
-          size="lg"
-          fullWidth
-        />
+      <View style={styles.footer}>
+        <Button title="Continue" onPress={() => nav(selectedSymptoms, isIrregular, fertilityTracking)} size="lg" fullWidth />
       </View>
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: colors.background.light },
+  body: { paddingHorizontal: 24, paddingVertical: 32, gap: 24 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  stepRow: { flexDirection: 'row', gap: 8 },
+  stepDot: { width: 32, height: 4, borderRadius: 9999, backgroundColor: colors.secondary[200] },
+  stepActive: { backgroundColor: colors.primary[500] },
+  skipText: { fontSize: 14, color: colors.primary[600], fontWeight: '500' },
+  title: { fontSize: 24, fontWeight: '700', color: colors.secondary[900] },
+  subtitle: { fontSize: 14, color: colors.secondary[500], lineHeight: 20 },
+  label: { fontSize: 14, fontWeight: '500', color: colors.secondary[600] },
+  chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: { borderRadius: 9999, paddingHorizontal: 16, paddingVertical: 8, borderWidth: 1 },
+  chipDefault: { backgroundColor: '#ffffff', borderColor: colors.secondary[200] },
+  chipSelected: { backgroundColor: colors.primary[500], borderColor: colors.primary[500] },
+  chipText: { fontSize: 14, color: colors.secondary[700] },
+  chipTextSelected: { color: '#ffffff', fontWeight: '500' },
+  toggleRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: '#ffffff', borderRadius: 12, padding: 16,
+    borderWidth: 1, borderColor: colors.secondary[200],
+  },
+  toggleTitle: { fontSize: 14, fontWeight: '500', color: colors.secondary[900] },
+  toggleDesc: { fontSize: 12, color: colors.secondary[400], marginTop: 2 },
+  switch: { width: 44, height: 24, borderRadius: 12, backgroundColor: colors.secondary[200], justifyContent: 'center', paddingHorizontal: 2 },
+  switchOn: { backgroundColor: colors.primary[500] },
+  switchThumb: { width: 20, height: 20, borderRadius: 10, backgroundColor: '#ffffff', alignSelf: 'flex-start' },
+  switchThumbOn: { alignSelf: 'flex-end' },
+  footer: { paddingHorizontal: 24, paddingBottom: 24 },
+});

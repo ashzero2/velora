@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,15 +11,12 @@ import { Button } from '@src/components/ui/Button';
 import { Slider } from '@src/components/ui/Slider';
 import { getCurrentCycleDay } from '@src/engines/CycleEngine';
 import { formatDisplayDate } from '@src/utils/dateUtils';
+import { colors } from '@src/constants/theme';
 import {
-  DEFAULT_CYCLE_LENGTH,
-  DEFAULT_PERIOD_LENGTH,
-  ONBOARDING_CYCLE_MIN,
-  ONBOARDING_CYCLE_MAX,
-  ONBOARDING_PERIOD_MIN,
-  ONBOARDING_PERIOD_MAX,
-  MEDICAL_DISCLAIMER,
-  PRIVACY_NOTICE,
+  DEFAULT_CYCLE_LENGTH, DEFAULT_PERIOD_LENGTH,
+  ONBOARDING_CYCLE_MIN, ONBOARDING_CYCLE_MAX,
+  ONBOARDING_PERIOD_MIN, ONBOARDING_PERIOD_MAX,
+  MEDICAL_DISCLAIMER, PRIVACY_NOTICE,
 } from '@src/constants/medical';
 
 export default function SettingsScreen() {
@@ -30,205 +27,89 @@ export default function SettingsScreen() {
   const resetOnboarding = useSettingsStore((s) => s.resetOnboarding);
   const currentCycle = useCycleStore((s) => s.currentCycle);
 
-  const [cycleLength, setCycleLength] = useState(
-    onboardingData?.averageCycleLength ?? DEFAULT_CYCLE_LENGTH,
-  );
-  const [periodLength, setPeriodLength] = useState(
-    onboardingData?.averagePeriodLength ?? DEFAULT_PERIOD_LENGTH,
-  );
+  const [cycleLength, setCycleLength] = useState(onboardingData?.averageCycleLength ?? DEFAULT_CYCLE_LENGTH);
+  const [periodLength, setPeriodLength] = useState(onboardingData?.averagePeriodLength ?? DEFAULT_PERIOD_LENGTH);
   const [hasChanges, setHasChanges] = useState(false);
 
   const cycleDay = currentCycle ? getCurrentCycleDay(currentCycle.startDate) : 0;
 
-  const handleCycleLengthChange = (value: number) => {
-    setCycleLength(value);
-    setHasChanges(true);
-  };
-
-  const handlePeriodLengthChange = (value: number) => {
-    setPeriodLength(value);
-    setHasChanges(true);
-  };
-
   const handleSave = async () => {
-    // Save updated onboarding-level values through settings
-    const { saveOnboardingData } = await import(
-      '@src/database/repositories/SettingsRepository'
-    );
+    const { saveOnboardingData } = await import('@src/database/repositories/SettingsRepository');
     await saveOnboardingData(db, {
       lastPeriodStart: onboardingData?.lastPeriodStart ?? '',
-      averageCycleLength: cycleLength,
-      averagePeriodLength: periodLength,
+      averageCycleLength: cycleLength, averagePeriodLength: periodLength,
       typicalSymptoms: onboardingData?.typicalSymptoms,
       isIrregular: onboardingData?.isIrregular,
       fertilityTracking: onboardingData?.fertilityTracking,
       completedAt: onboardingData?.completedAt ?? new Date().toISOString(),
     });
-
-    // Re-initialize settings store
     await useSettingsStore.getState().initialize(db);
-    // Refresh cycle phase info
     useCycleStore.getState().refreshPhaseInfo(cycleLength, periodLength);
     setHasChanges(false);
   };
 
   const handleToggleFertility = async () => {
-    await updateSettings(db, {
-      fertilityTrackingEnabled: !settings.fertilityTrackingEnabled,
-    });
+    await updateSettings(db, { fertilityTrackingEnabled: !settings.fertilityTrackingEnabled });
   };
 
   const handleResetOnboarding = () => {
-    Alert.alert(
-      'Reset Onboarding',
-      'This will clear your onboarding data and take you back to the welcome screen. Your cycle data will be preserved.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Reset',
-          style: 'destructive',
-          onPress: async () => {
-            await resetOnboarding(db);
-            router.replace('/');
-          },
-        },
-      ],
-    );
+    Alert.alert('Reset Onboarding', 'This will clear your onboarding data and take you back to the welcome screen. Your cycle data will be preserved.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Reset', style: 'destructive', onPress: async () => { await resetOnboarding(db); router.replace('/'); } },
+    ]);
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-secondary-50">
-      <ScrollView
-        className="flex-1"
-        contentContainerStyle={{ paddingBottom: 40 }}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Header */}
-        <View className="px-6 pt-4 pb-4">
-          <Text className="text-2xl font-bold text-secondary-900">Settings</Text>
+    <SafeAreaView style={styles.safe}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Settings</Text>
         </View>
 
-        <View className="px-6 gap-5">
-          {/* Current cycle info */}
+        <View style={styles.content}>
           {currentCycle && (
-            <Card variant="elevated" className="gap-3">
-              <Text className="text-sm font-semibold text-secondary-500 uppercase tracking-wide">
-                Current Cycle
-              </Text>
-              <SettingRow
-                label="Last period started"
-                value={formatDisplayDate(currentCycle.startDate, true)}
-              />
+            <Card variant="elevated" style={{ gap: 12 }}>
+              <Text style={styles.sectionTitle}>CURRENT CYCLE</Text>
+              <SettingRow label="Last period started" value={formatDisplayDate(currentCycle.startDate, true)} />
               <SettingRow label="Current cycle day" value={`Day ${cycleDay}`} />
-              {currentCycle.periodEndDate && (
-                <SettingRow
-                  label="Period ended"
-                  value={formatDisplayDate(currentCycle.periodEndDate, true)}
-                />
-              )}
+              {currentCycle.periodEndDate && <SettingRow label="Period ended" value={formatDisplayDate(currentCycle.periodEndDate, true)} />}
             </Card>
           )}
 
-          {/* Cycle settings */}
-          <Card variant="elevated" className="gap-4">
-            <Text className="text-sm font-semibold text-secondary-500 uppercase tracking-wide">
-              Cycle Settings
-            </Text>
-
-            <Slider
-              value={cycleLength}
-              onChange={handleCycleLengthChange}
-              min={ONBOARDING_CYCLE_MIN}
-              max={ONBOARDING_CYCLE_MAX}
-              label="Average cycle length"
-              unit="days"
-            />
-
-            <Slider
-              value={periodLength}
-              onChange={handlePeriodLengthChange}
-              min={ONBOARDING_PERIOD_MIN}
-              max={ONBOARDING_PERIOD_MAX}
-              label="Average period length"
-              unit="days"
-            />
-
-            {hasChanges && (
-              <Button
-                title="Save Changes"
-                onPress={handleSave}
-                size="md"
-                fullWidth
-              />
-            )}
+          <Card variant="elevated" style={{ gap: 16 }}>
+            <Text style={styles.sectionTitle}>CYCLE SETTINGS</Text>
+            <Slider value={cycleLength} onChange={(v) => { setCycleLength(v); setHasChanges(true); }} min={ONBOARDING_CYCLE_MIN} max={ONBOARDING_CYCLE_MAX} label="Average cycle length" unit="days" />
+            <Slider value={periodLength} onChange={(v) => { setPeriodLength(v); setHasChanges(true); }} min={ONBOARDING_PERIOD_MIN} max={ONBOARDING_PERIOD_MAX} label="Average period length" unit="days" />
+            {hasChanges && <Button title="Save Changes" onPress={handleSave} size="md" fullWidth />}
           </Card>
 
-          {/* Preferences */}
-          <Card variant="elevated" className="gap-3">
-            <Text className="text-sm font-semibold text-secondary-500 uppercase tracking-wide">
-              Preferences
-            </Text>
-
-            <TouchableOpacity
-              onPress={handleToggleFertility}
-              activeOpacity={0.7}
-              className="flex-row items-center justify-between py-2"
-            >
-              <View className="flex-1 mr-3">
-                <Text className="text-sm font-medium text-secondary-900">
-                  Fertility tracking
-                </Text>
-                <Text className="text-xs text-secondary-400 mt-0.5">
-                  Show ovulation and fertile window estimates
-                </Text>
+          <Card variant="elevated" style={{ gap: 12 }}>
+            <Text style={styles.sectionTitle}>PREFERENCES</Text>
+            <TouchableOpacity onPress={handleToggleFertility} activeOpacity={0.7} style={styles.toggleRow}>
+              <View style={{ flex: 1, marginRight: 12 }}>
+                <Text style={styles.toggleTitle}>Fertility tracking</Text>
+                <Text style={styles.toggleDesc}>Show ovulation and fertile window estimates</Text>
               </View>
-              <View
-                className={`w-11 h-6 rounded-full justify-center px-0.5 ${
-                  settings.fertilityTrackingEnabled
-                    ? 'bg-primary-500'
-                    : 'bg-secondary-200'
-                }`}
-              >
-                <View
-                  className={`w-5 h-5 rounded-full bg-white ${
-                    settings.fertilityTrackingEnabled ? 'self-end' : 'self-start'
-                  }`}
-                />
+              <View style={[styles.switch, settings.fertilityTrackingEnabled && styles.switchOn]}>
+                <View style={[styles.switchThumb, settings.fertilityTrackingEnabled && styles.switchThumbOn]} />
               </View>
             </TouchableOpacity>
           </Card>
 
-          {/* Privacy */}
-          <Card className="gap-2">
-            <View className="flex-row items-center gap-2">
-              <Ionicons name="lock-closed" size={16} color="#6b9080" />
-              <Text className="text-sm font-semibold text-secondary-500 uppercase tracking-wide">
-                Privacy
-              </Text>
+          <Card style={{ gap: 8 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Ionicons name="lock-closed" size={16} color={colors.primary[500]} />
+              <Text style={styles.sectionTitle}>PRIVACY</Text>
             </View>
-            <Text className="text-xs text-secondary-500 leading-4">
-              {PRIVACY_NOTICE}
-            </Text>
+            <Text style={styles.privacyText}>{PRIVACY_NOTICE}</Text>
           </Card>
 
-          {/* Danger zone */}
-          <Card className="gap-3">
-            <Text className="text-sm font-semibold text-secondary-500 uppercase tracking-wide">
-              Advanced
-            </Text>
-            <Button
-              title="Reset Onboarding"
-              onPress={handleResetOnboarding}
-              variant="ghost"
-              size="md"
-              fullWidth
-            />
+          <Card style={{ gap: 12 }}>
+            <Text style={styles.sectionTitle}>ADVANCED</Text>
+            <Button title="Reset Onboarding" onPress={handleResetOnboarding} variant="ghost" size="md" fullWidth />
           </Card>
 
-          {/* Medical disclaimer */}
-          <Text className="text-xs text-secondary-400 text-center leading-4 px-4 pb-4">
-            {MEDICAL_DISCLAIMER}
-          </Text>
+          <Text style={styles.disclaimer}>{MEDICAL_DISCLAIMER}</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -237,9 +118,29 @@ export default function SettingsScreen() {
 
 function SettingRow({ label, value }: { label: string; value: string }) {
   return (
-    <View className="flex-row justify-between items-center py-1">
-      <Text className="text-sm text-secondary-500">{label}</Text>
-      <Text className="text-sm font-medium text-secondary-900">{value}</Text>
+    <View style={styles.settingRow}>
+      <Text style={styles.settingLabel}>{label}</Text>
+      <Text style={styles.settingValue}>{value}</Text>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: colors.background.light },
+  header: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 16 },
+  headerTitle: { fontSize: 24, fontWeight: '700', color: colors.secondary[900] },
+  content: { paddingHorizontal: 24, gap: 20 },
+  sectionTitle: { fontSize: 13, fontWeight: '600', color: colors.secondary[500], letterSpacing: 0.5 },
+  toggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 8 },
+  toggleTitle: { fontSize: 14, fontWeight: '500', color: colors.secondary[900] },
+  toggleDesc: { fontSize: 12, color: colors.secondary[400], marginTop: 2 },
+  switch: { width: 44, height: 24, borderRadius: 12, backgroundColor: colors.secondary[200], justifyContent: 'center', paddingHorizontal: 2 },
+  switchOn: { backgroundColor: colors.primary[500] },
+  switchThumb: { width: 20, height: 20, borderRadius: 10, backgroundColor: '#ffffff', alignSelf: 'flex-start' },
+  switchThumbOn: { alignSelf: 'flex-end' },
+  privacyText: { fontSize: 12, color: colors.secondary[500], lineHeight: 16 },
+  disclaimer: { fontSize: 12, color: colors.secondary[400], textAlign: 'center', lineHeight: 16, paddingHorizontal: 16, paddingBottom: 16 },
+  settingRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4 },
+  settingLabel: { fontSize: 14, color: colors.secondary[500] },
+  settingValue: { fontSize: 14, fontWeight: '500', color: colors.secondary[900] },
+});

@@ -1,5 +1,12 @@
 import React from 'react';
-import { TouchableOpacity, Text, ActivityIndicator, type ViewStyle } from 'react-native';
+import {
+  TouchableOpacity,
+  Text,
+  ActivityIndicator,
+  StyleSheet,
+  type ViewStyle,
+} from 'react-native';
+import { colors } from '@src/constants/theme';
 
 type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost';
 type ButtonSize = 'sm' | 'md' | 'lg';
@@ -15,32 +22,6 @@ interface ButtonProps {
   style?: ViewStyle;
 }
 
-const variantClasses: Record<ButtonVariant, string> = {
-  primary: 'bg-primary-500 active:bg-primary-600',
-  secondary: 'bg-secondary-200 active:bg-secondary-300',
-  outline: 'bg-transparent border border-primary-500',
-  ghost: 'bg-transparent active:bg-secondary-100',
-};
-
-const variantTextClasses: Record<ButtonVariant, string> = {
-  primary: 'text-white',
-  secondary: 'text-secondary-900',
-  outline: 'text-primary-600',
-  ghost: 'text-primary-600',
-};
-
-const sizeClasses: Record<ButtonSize, string> = {
-  sm: 'px-4 py-2',
-  md: 'px-6 py-3',
-  lg: 'px-8 py-4',
-};
-
-const sizeTextClasses: Record<ButtonSize, string> = {
-  sm: 'text-sm',
-  md: 'text-base',
-  lg: 'text-lg',
-};
-
 export function Button({
   title,
   onPress,
@@ -53,36 +34,71 @@ export function Button({
 }: ButtonProps) {
   const isDisabled = disabled || loading;
 
+  const variantStyle = variantStyles[variant];
+  const sizeStyle = sizeStyles[size];
+  const textVariantStyle = textVariantStyles[variant];
+  const textSizeStyle = textSizeStyles[size];
+
   return (
     <TouchableOpacity
       onPress={onPress}
       disabled={isDisabled}
       activeOpacity={0.7}
-      className={`
-        rounded-button items-center justify-center flex-row
-        ${variantClasses[variant]}
-        ${sizeClasses[size]}
-        ${fullWidth ? 'w-full' : ''}
-        ${isDisabled ? 'opacity-50' : ''}
-      `}
-      style={style}
+      style={[
+        styles.base,
+        variantStyle,
+        sizeStyle,
+        fullWidth && styles.fullWidth,
+        isDisabled && styles.disabled,
+        style,
+      ]}
     >
       {loading && (
         <ActivityIndicator
           size="small"
-          color={variant === 'primary' ? '#ffffff' : '#6b9080'}
+          color={variant === 'primary' ? '#ffffff' : colors.primary[500]}
           style={{ marginRight: 8 }}
         />
       )}
-      <Text
-        className={`
-          font-semibold
-          ${variantTextClasses[variant]}
-          ${sizeTextClasses[size]}
-        `}
-      >
-        {title}
-      </Text>
+      <Text style={[styles.text, textVariantStyle, textSizeStyle]}>{title}</Text>
     </TouchableOpacity>
   );
 }
+
+const styles = StyleSheet.create({
+  base: {
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+  },
+  fullWidth: { width: '100%' },
+  disabled: { opacity: 0.5 },
+  text: { fontWeight: '600' },
+});
+
+const variantStyles = StyleSheet.create({
+  primary: { backgroundColor: colors.primary[500] },
+  secondary: { backgroundColor: colors.secondary[200] },
+  outline: { backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.primary[500] },
+  ghost: { backgroundColor: 'transparent' },
+});
+
+const textVariantStyles = StyleSheet.create({
+  primary: { color: '#ffffff' },
+  secondary: { color: colors.secondary[900] },
+  outline: { color: colors.primary[600] },
+  ghost: { color: colors.primary[600] },
+});
+
+const sizeStyles = StyleSheet.create({
+  sm: { paddingHorizontal: 16, paddingVertical: 8 },
+  md: { paddingHorizontal: 24, paddingVertical: 12 },
+  lg: { paddingHorizontal: 32, paddingVertical: 16 },
+});
+
+const textSizeStyles = StyleSheet.create({
+  sm: { fontSize: 14 },
+  md: { fontSize: 16 },
+  lg: { fontSize: 18 },
+});

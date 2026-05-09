@@ -1,48 +1,32 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, Platform, StyleSheet } from 'react-native';
 import { formatDisplayDate } from '@src/utils/dateUtils';
+import { colors } from '@src/constants/theme';
 
 interface DatePickerProps {
-  value: string; // ISO YYYY-MM-DD
+  value: string;
   onChange: (date: string) => void;
   label?: string;
   maxDate?: string;
   minDate?: string;
 }
 
-/**
- * Simple date picker component.
- * On native, uses a text-based date input with increment/decrement.
- * For a production app, this would wrap @react-native-community/datetimepicker.
- */
-export function DatePicker({
-  value,
-  onChange,
-  label,
-  maxDate,
-  minDate,
-}: DatePickerProps) {
+export function DatePicker({ value, onChange, label, maxDate, minDate }: DatePickerProps) {
   const [showPicker, setShowPicker] = useState(false);
 
   const handleDayChange = (delta: number) => {
     const current = new Date(value + 'T00:00:00');
     current.setDate(current.getDate() + delta);
     const newDate = current.toISOString().split('T')[0];
-
     if (maxDate && newDate > maxDate) return;
     if (minDate && newDate < minDate) return;
-
     onChange(newDate);
   };
 
   if (Platform.OS === 'web') {
     return (
-      <View className="gap-1">
-        {label && (
-          <Text className="text-sm font-medium text-secondary-600 mb-1">
-            {label}
-          </Text>
-        )}
+      <View>
+        {label && <Text style={styles.label}>{label}</Text>}
         <input
           type="date"
           value={value}
@@ -64,39 +48,36 @@ export function DatePicker({
   }
 
   return (
-    <View className="gap-1">
-      {label && (
-        <Text className="text-sm font-medium text-secondary-600 mb-1">
-          {label}
-        </Text>
-      )}
-      <View className="flex-row items-center bg-white rounded-button border border-secondary-200 overflow-hidden">
-        <TouchableOpacity
-          onPress={() => handleDayChange(-1)}
-          className="px-4 py-3 items-center justify-center"
-          activeOpacity={0.7}
-        >
-          <Text className="text-lg text-primary-600 font-bold">−</Text>
+    <View>
+      {label && <Text style={styles.label}>{label}</Text>}
+      <View style={styles.row}>
+        <TouchableOpacity onPress={() => handleDayChange(-1)} style={styles.btn} activeOpacity={0.7}>
+          <Text style={styles.btnText}>−</Text>
         </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => setShowPicker(!showPicker)}
-          className="flex-1 py-3 items-center"
-          activeOpacity={0.7}
-        >
-          <Text className="text-base text-secondary-900 font-medium">
-            {formatDisplayDate(value, true)}
-          </Text>
+        <TouchableOpacity onPress={() => setShowPicker(!showPicker)} style={styles.center} activeOpacity={0.7}>
+          <Text style={styles.dateText}>{formatDisplayDate(value, true)}</Text>
         </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => handleDayChange(1)}
-          className="px-4 py-3 items-center justify-center"
-          activeOpacity={0.7}
-        >
-          <Text className="text-lg text-primary-600 font-bold">+</Text>
+        <TouchableOpacity onPress={() => handleDayChange(1)} style={styles.btn} activeOpacity={0.7}>
+          <Text style={styles.btnText}>+</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  label: { fontSize: 14, fontWeight: '500', color: colors.secondary[600], marginBottom: 4 },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.secondary[200],
+    overflow: 'hidden',
+  },
+  btn: { paddingHorizontal: 16, paddingVertical: 12, alignItems: 'center', justifyContent: 'center' },
+  btnText: { fontSize: 18, color: colors.primary[600], fontWeight: '700' },
+  center: { flex: 1, paddingVertical: 12, alignItems: 'center' },
+  dateText: { fontSize: 16, color: colors.secondary[900], fontWeight: '500' },
+});

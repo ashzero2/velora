@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { colors } from '@src/constants/theme';
 
 interface SliderProps {
   value: number;
@@ -11,10 +12,6 @@ interface SliderProps {
   unit?: string;
 }
 
-/**
- * Numeric value selector with increment/decrement buttons.
- * Displays current value prominently.
- */
 export function Slider({
   value,
   onChange,
@@ -24,51 +21,60 @@ export function Slider({
   label,
   unit = 'days',
 }: SliderProps) {
-  const handleDecrement = () => {
-    const newValue = Math.max(min, value - step);
-    onChange(newValue);
-  };
-
-  const handleIncrement = () => {
-    const newValue = Math.min(max, value + step);
-    onChange(newValue);
-  };
+  const handleDecrement = () => onChange(Math.max(min, value - step));
+  const handleIncrement = () => onChange(Math.min(max, value + step));
 
   return (
-    <View className="gap-1">
-      {label && (
-        <Text className="text-sm font-medium text-secondary-600 mb-1">
-          {label}
-        </Text>
-      )}
-      <View className="flex-row items-center bg-white rounded-button border border-secondary-200 overflow-hidden">
+    <View style={styles.wrapper}>
+      {label && <Text style={styles.label}>{label}</Text>}
+      <View style={styles.row}>
         <TouchableOpacity
           onPress={handleDecrement}
           disabled={value <= min}
-          className={`px-5 py-3 items-center justify-center ${value <= min ? 'opacity-30' : ''}`}
+          style={[styles.btn, value <= min && styles.btnDisabled]}
           activeOpacity={0.7}
         >
-          <Text className="text-xl text-primary-600 font-bold">−</Text>
+          <Text style={styles.btnText}>−</Text>
         </TouchableOpacity>
-
-        <View className="flex-1 py-3 items-center">
-          <Text className="text-xl font-bold text-secondary-900">{value}</Text>
-          <Text className="text-xs text-secondary-400 mt-0.5">{unit}</Text>
+        <View style={styles.center}>
+          <Text style={styles.value}>{value}</Text>
+          <Text style={styles.unit}>{unit}</Text>
         </View>
-
         <TouchableOpacity
           onPress={handleIncrement}
           disabled={value >= max}
-          className={`px-5 py-3 items-center justify-center ${value >= max ? 'opacity-30' : ''}`}
+          style={[styles.btn, value >= max && styles.btnDisabled]}
           activeOpacity={0.7}
         >
-          <Text className="text-xl text-primary-600 font-bold">+</Text>
+          <Text style={styles.btnText}>+</Text>
         </TouchableOpacity>
       </View>
-      <View className="flex-row justify-between px-1 mt-1">
-        <Text className="text-xs text-secondary-400">{min}</Text>
-        <Text className="text-xs text-secondary-400">{max}</Text>
+      <View style={styles.range}>
+        <Text style={styles.rangeText}>{min}</Text>
+        <Text style={styles.rangeText}>{max}</Text>
       </View>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  wrapper: { gap: 4 },
+  label: { fontSize: 14, fontWeight: '500', color: colors.secondary[600], marginBottom: 4 },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.secondary[200],
+    overflow: 'hidden',
+  },
+  btn: { paddingHorizontal: 20, paddingVertical: 12, alignItems: 'center', justifyContent: 'center' },
+  btnDisabled: { opacity: 0.3 },
+  btnText: { fontSize: 20, color: colors.primary[600], fontWeight: '700' },
+  center: { flex: 1, paddingVertical: 12, alignItems: 'center' },
+  value: { fontSize: 20, fontWeight: '700', color: colors.secondary[900] },
+  unit: { fontSize: 12, color: colors.secondary[400], marginTop: 2 },
+  range: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 4, marginTop: 4 },
+  rangeText: { fontSize: 12, color: colors.secondary[400] },
+});
