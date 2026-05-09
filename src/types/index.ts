@@ -1,5 +1,5 @@
 // ============================================================
-// Velora — Phase 1 Type Definitions
+// Velora — Type Definitions (Phase 1 + Phase 2)
 // ============================================================
 
 // --- Enums ---
@@ -90,4 +90,42 @@ export interface PhaseDescription {
   hormonalTrends: string;
   commonSymptoms: string[];
   energyLevel: 'low' | 'rising' | 'peak' | 'declining';
+}
+
+// --- Phase 2: Prediction Types ---
+
+export enum PredictionConfidence {
+  HIGH = 'high',       // n >= 6 cycles AND std_dev <= 2 days
+  MEDIUM = 'medium',   // n >= 3 cycles AND std_dev <= 4 days
+  LOW = 'low',         // n < 3 OR std_dev > 4 days
+  NONE = 'none',       // no completed cycles with cycle_length
+}
+
+export interface Prediction {
+  id: string;
+  basedOnCycleIds: string[];           // IDs of cycles used for calculation
+  predictedPeriodStart: string;         // ISO YYYY-MM-DD
+  predictedPeriodEnd: string;           // ISO YYYY-MM-DD (start + avg period length)
+  predictedPeriodStartRange: [string, string]; // [earliest, latest] — widens with lower confidence
+  estimatedOvulationDate: string;       // ISO YYYY-MM-DD
+  fertileWindowStart: string;           // ISO YYYY-MM-DD (ovulation − 5)
+  fertileWindowEnd: string;             // ISO YYYY-MM-DD (= ovulation day)
+  confidence: PredictionConfidence;
+  confidenceScore: number;              // 0–100 numeric score
+  averageCycleLength: number;           // weighted average used
+  standardDeviation: number;            // cycle variability in days
+  lutealPhaseEstimate: number;          // days (default 14)
+  basisDescription: string;             // human-readable explanation
+  createdAt: string;                    // ISO datetime
+}
+
+export interface CycleStatistics {
+  totalCycles: number;
+  averageCycleLength: number;
+  averagePeriodLength: number;
+  shortestCycle: number;
+  longestCycle: number;
+  cycleVariability: number;             // standard deviation in days
+  regularityScore: number;              // 0–100
+  irregularityFlag: 'normal' | 'mildly_irregular' | 'irregular';
 }
