@@ -8,9 +8,12 @@ import { useCurrentPhase } from '@src/hooks/useCurrentPhase';
 import { getCurrentCycleDay } from '@src/engines/CycleEngine';
 import { CycleRing } from '@src/components/cycle/CycleRing';
 import { PhaseCard } from '@src/components/cycle/PhaseCard';
+import { PredictionCard } from '@src/components/cycle/PredictionCard';
+import { FertileWindowBar } from '@src/components/cycle/FertileWindowBar';
 import { EmptyState } from '@src/components/ui/EmptyState';
 import { Button } from '@src/components/ui/Button';
 import { Card } from '@src/components/ui/Card';
+import { usePredictions } from '@src/hooks/usePredictions';
 import { today, formatDisplayDate } from '@src/utils/dateUtils';
 import { CyclePhase } from '@src/types';
 import { colors } from '@src/constants/theme';
@@ -28,6 +31,8 @@ export default function HomeScreen() {
   const startNewCycle = useCycleStore((s) => s.startNewCycle);
   const onboardingData = useSettingsStore((s) => s.onboardingData);
   const phaseInfo = useCurrentPhase();
+  const settings = useSettingsStore((s) => s.settings);
+  const { prediction } = usePredictions();
 
   // Re-initialize stores when dashboard mounts (e.g. after onboarding)
   useEffect(() => {
@@ -78,6 +83,27 @@ export default function HomeScreen() {
 
         <View style={styles.content}>
           {phaseInfo && <PhaseCard phaseInfo={phaseInfo} />}
+
+          {/* Prediction section */}
+          {prediction ? (
+            <>
+              <PredictionCard prediction={prediction} />
+              {settings.fertilityTrackingEnabled && currentCycle && (
+                <FertileWindowBar
+                  prediction={prediction}
+                  cycleStartDate={currentCycle.startDate}
+                  cycleLength={cycleLength}
+                />
+              )}
+            </>
+          ) : hasCycle ? (
+            <Card style={{ alignItems: 'center', paddingVertical: 20 }}>
+              <Ionicons name="analytics-outline" size={28} color={colors.secondary[400]} />
+              <Text style={{ fontSize: 14, color: colors.secondary[500], marginTop: 8, textAlign: 'center' }}>
+                Track more cycles for predictions
+              </Text>
+            </Card>
+          ) : null}
 
           <Card variant="elevated" style={{ gap: 12 }}>
             <Text style={styles.sectionTitle}>PERIOD STATUS</Text>
