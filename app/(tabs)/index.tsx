@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDatabase } from '@src/hooks/useDatabase';
@@ -19,6 +19,8 @@ import { Ionicons } from '@expo/vector-icons';
 
 export default function HomeScreen() {
   const db = useDatabase();
+  const initialize = useCycleStore((s) => s.initialize);
+  const initSettings = useSettingsStore((s) => s.initialize);
   const currentCycle = useCycleStore((s) => s.currentCycle);
   const isLoading = useCycleStore((s) => s.isLoading);
   const startPeriod = useCycleStore((s) => s.startPeriod);
@@ -26,6 +28,12 @@ export default function HomeScreen() {
   const startNewCycle = useCycleStore((s) => s.startNewCycle);
   const onboardingData = useSettingsStore((s) => s.onboardingData);
   const phaseInfo = useCurrentPhase();
+
+  // Re-initialize stores when dashboard mounts (e.g. after onboarding)
+  useEffect(() => {
+    initSettings(db);
+    initialize(db);
+  }, [db]);
 
   const cycleLength = onboardingData?.averageCycleLength ?? DEFAULT_CYCLE_LENGTH;
   const periodLength = onboardingData?.averagePeriodLength ?? DEFAULT_PERIOD_LENGTH;
