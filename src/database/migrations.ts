@@ -4,10 +4,10 @@
 // ============================================================
 
 import type { SQLiteDatabase } from 'expo-sqlite';
-import { SCHEMA_STATEMENTS } from './schema';
+import { SCHEMA_STATEMENTS, SCHEMA_V2_STATEMENTS } from './schema';
 
 /** Current database schema version */
-const CURRENT_VERSION = 1;
+const CURRENT_VERSION = 2;
 
 /**
  * Initialize the database: create tables and run any pending migrations.
@@ -27,8 +27,9 @@ export async function initializeDatabase(db: SQLiteDatabase): Promise<void> {
     await migrateToV1(db);
   }
 
-  // Future migrations go here:
-  // if (currentVersion < 2) { await migrateToV2(db); }
+  if (currentVersion < 2) {
+    await migrateToV2(db);
+  }
 
   // Set the current version
   await db.execAsync(`PRAGMA user_version = ${CURRENT_VERSION};`);
@@ -39,6 +40,15 @@ export async function initializeDatabase(db: SQLiteDatabase): Promise<void> {
  */
 async function migrateToV1(db: SQLiteDatabase): Promise<void> {
   for (const statement of SCHEMA_STATEMENTS) {
+    await db.execAsync(statement);
+  }
+}
+
+/**
+ * Migration v1 → v2: Add predictions table for Phase 2.
+ */
+async function migrateToV2(db: SQLiteDatabase): Promise<void> {
+  for (const statement of SCHEMA_V2_STATEMENTS) {
     await db.execAsync(statement);
   }
 }

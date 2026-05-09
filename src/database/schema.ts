@@ -1,6 +1,6 @@
 // ============================================================
 // Velora — Database Schema
-// SQLite CREATE TABLE statements for Phase 1
+// SQLite CREATE TABLE statements for Phase 1 + Phase 2
 // ============================================================
 
 /**
@@ -39,10 +39,49 @@ export const CREATE_CYCLES_INDEX = `
 `;
 
 /**
- * All schema creation statements in order.
+ * SQL to create the predictions table (Phase 2).
+ */
+export const CREATE_PREDICTIONS_TABLE = `
+  CREATE TABLE IF NOT EXISTS predictions (
+    id TEXT PRIMARY KEY,
+    based_on_cycle_ids TEXT NOT NULL,
+    predicted_period_start TEXT NOT NULL,
+    predicted_period_end TEXT NOT NULL,
+    predicted_start_range_early TEXT,
+    predicted_start_range_late TEXT,
+    estimated_ovulation_date TEXT,
+    fertile_window_start TEXT,
+    fertile_window_end TEXT,
+    confidence TEXT NOT NULL,
+    confidence_score INTEGER,
+    average_cycle_length REAL,
+    standard_deviation REAL,
+    luteal_phase_estimate INTEGER,
+    basis_description TEXT,
+    created_at TEXT NOT NULL
+  );
+`;
+
+/**
+ * Index on predictions.created_at for fast ordering.
+ */
+export const CREATE_PREDICTIONS_INDEX = `
+  CREATE INDEX IF NOT EXISTS idx_predictions_created ON predictions(created_at);
+`;
+
+/**
+ * All Phase 1 schema creation statements in order.
  */
 export const SCHEMA_STATEMENTS = [
   CREATE_CYCLES_TABLE,
   CREATE_SETTINGS_TABLE,
   CREATE_CYCLES_INDEX,
+];
+
+/**
+ * Phase 2 schema statements (predictions table).
+ */
+export const SCHEMA_V2_STATEMENTS = [
+  CREATE_PREDICTIONS_TABLE,
+  CREATE_PREDICTIONS_INDEX,
 ];
