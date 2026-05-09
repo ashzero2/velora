@@ -10,12 +10,14 @@ import { CycleRing } from '@src/components/cycle/CycleRing';
 import { PhaseCard } from '@src/components/cycle/PhaseCard';
 import { PredictionCard } from '@src/components/cycle/PredictionCard';
 import { FertileWindowBar } from '@src/components/cycle/FertileWindowBar';
+import { QuickLogCard } from '@src/components/log/QuickLogCard';
 import { EmptyState } from '@src/components/ui/EmptyState';
 import { Button } from '@src/components/ui/Button';
 import { Card } from '@src/components/ui/Card';
 import { usePredictions } from '@src/hooks/usePredictions';
-import { today, formatDisplayDate } from '@src/utils/dateUtils';
-import { CyclePhase } from '@src/types';
+import { useLogStore } from '@src/stores/useLogStore';
+import { today, formatDisplayDate, nowISO } from '@src/utils/dateUtils';
+import { CyclePhase, MoodType } from '@src/types';
 import { colors } from '@src/constants/theme';
 import { DEFAULT_CYCLE_LENGTH, DEFAULT_PERIOD_LENGTH, MEDICAL_DISCLAIMER } from '@src/constants/medical';
 import { Ionicons } from '@expo/vector-icons';
@@ -33,11 +35,15 @@ export default function HomeScreen() {
   const phaseInfo = useCurrentPhase();
   const settings = useSettingsStore((s) => s.settings);
   const { prediction } = usePredictions();
+  const todayLog = useLogStore((s) => s.todayLog);
+  const initLog = useLogStore((s) => s.initialize);
+  const upsertLog = useLogStore((s) => s.upsertLog);
 
   // Re-initialize stores when dashboard mounts (e.g. after onboarding)
   useEffect(() => {
     initSettings(db);
     initialize(db);
+    initLog(db);
   }, [db]);
 
   const cycleLength = onboardingData?.averageCycleLength ?? DEFAULT_CYCLE_LENGTH;
@@ -104,6 +110,28 @@ export default function HomeScreen() {
               </Text>
             </Card>
           ) : null}
+
+          {/* Quick Log */}
+          {hasCycle && (
+            <QuickLogCard
+              selectedMoods={todayLog?.mood ?? []}
+              onMoodToggle={(mood: MoodType) => {
+                const currentMoods = todayLog?.mood ?? [];
+                const newMoods = currentMoods.includes(mood)
+                  ? currentMoods.filter((m) => m !== mood)
+                  : [...currentMoods, mood];
+                if (todayLog) {
+                  upsertLog(db, { ...todayLog, mood: newMoods, updatedAt: nowISO() });
+                }
+              }}
+              onLogMore={() => {
+                // Navigate to Log tab — expo-router handles this via tab navigation
+                const { router } = require('expo-router');
+                router.navigate('/(tabs)/log');
+              }}
+              hasLoggedToday={todayLog !== null}
+            />
+          )}
 
           <Card variant="elevated" style={{ gap: 12 }}>
             <Text style={styles.sectionTitle}>PERIOD STATUS</Text>
