@@ -1,5 +1,5 @@
 // ============================================================
-// Velora — Type Definitions (Phase 1 + Phase 2)
+// Velora — Type Definitions (Phase 1 + Phase 2 + Phase 3)
 // ============================================================
 
 // --- Enums ---
@@ -128,4 +128,61 @@ export interface CycleStatistics {
   cycleVariability: number;             // standard deviation in days
   regularityScore: number;              // 0–100
   irregularityFlag: 'normal' | 'mildly_irregular' | 'irregular';
+}
+
+// --- Phase 3: Daily Logging & Insights Types ---
+
+export enum MoodType {
+  HAPPY = 'happy',
+  CALM = 'calm',
+  ENERGETIC = 'energetic',
+  ANXIOUS = 'anxious',
+  SAD = 'sad',
+  IRRITABLE = 'irritable',
+  SENSITIVE = 'sensitive',
+  NEUTRAL = 'neutral',
+}
+
+export enum CervicalMucusType {
+  DRY = 'dry',
+  STICKY = 'sticky',
+  CREAMY = 'creamy',
+  WATERY = 'watery',
+  EGG_WHITE = 'egg_white',
+}
+
+export interface DailyLog {
+  id: string;
+  date: string;                          // ISO YYYY-MM-DD (unique per day)
+  cycleId: string | null;                // FK to current cycle
+  flow: FlowIntensity | null;
+  mood: MoodType[];                      // multiple moods per day
+  crampsSeverity: Severity;
+  headacheSeverity: Severity;
+  acneSeverity: Severity;
+  bloatingSeverity: Severity;
+  backPainSeverity: Severity;
+  breastTendernessSeverity: Severity;
+  libido: Severity;
+  discharge: CervicalMucusType | null;
+  sleepHours: number | null;
+  exerciseMinutes: number | null;
+  waterIntakeMl: number | null;
+  bodyTemperature: number | null;        // in user's preferred unit
+  basalBodyTemperature: number | null;   // in user's preferred unit
+  weight: number | null;                 // in user's preferred unit
+  medication: string[];                  // free-text medication names
+  notes: string;
+  createdAt: string;                     // ISO datetime
+  updatedAt: string;                     // ISO datetime
+}
+
+export interface InsightItem {
+  id: string;
+  type: 'pattern' | 'trend' | 'correlation' | 'statistic';
+  title: string;
+  description: string;
+  dataSource: string;                    // e.g. "Based on your last 6 cycles"
+  confidence: number;                    // 0–100
+  generatedAt: string;                   // ISO datetime
 }
