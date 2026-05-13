@@ -1,20 +1,22 @@
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useSettingsStore } from "@src/stores/useSettingsStore";
+import { useThemeColors } from "@src/hooks/useThemeColors";
 
 export default function TabLayout() {
   const settings = useSettingsStore((s) => s.settings);
   const fertilityEnabled = settings.fertilityTrackingEnabled;
+  const theme = useThemeColors();
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: "#6b9080",
-        tabBarInactiveTintColor: "#a8a29e",
+        tabBarInactiveTintColor: theme.textMuted,
         tabBarStyle: {
-          backgroundColor: "#fafaf9",
-          borderTopColor: "#e7e5e4",
+          backgroundColor: theme.tabBarBackground,
+          borderTopColor: theme.tabBarBorder,
         },
       }}
     >
