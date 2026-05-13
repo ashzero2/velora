@@ -8,18 +8,16 @@ import { useCurrentPhase } from '@src/hooks/useCurrentPhase';
 import { getCurrentCycleDay } from '@src/engines/CycleEngine';
 import { CycleRing } from '@src/components/cycle/CycleRing';
 import { PhaseCard } from '@src/components/cycle/PhaseCard';
-import { PredictionCard } from '@src/components/cycle/PredictionCard';
-import { FertileWindowBar } from '@src/components/cycle/FertileWindowBar';
-import { QuickLogCard } from '@src/components/log/QuickLogCard';
+import { FlowSelector } from '@src/components/log/FlowSelector';
 import { EmptyState } from '@src/components/ui/EmptyState';
 import { Button } from '@src/components/ui/Button';
 import { Card } from '@src/components/ui/Card';
 import { usePredictions } from '@src/hooks/usePredictions';
 import { useLogStore, createBlankLog } from '@src/stores/useLogStore';
 import { today, formatDisplayDate, nowISO } from '@src/utils/dateUtils';
-import { CyclePhase, MoodType } from '@src/types';
+import { CyclePhase, FlowIntensity } from '@src/types';
 import { colors } from '@src/constants/theme';
-import { DEFAULT_CYCLE_LENGTH, DEFAULT_PERIOD_LENGTH, MEDICAL_DISCLAIMER } from '@src/constants/medical';
+import { DEFAULT_CYCLE_LENGTH, DEFAULT_PERIOD_LENGTH } from '@src/constants/medical';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function HomeScreen() {
@@ -34,7 +32,7 @@ export default function HomeScreen() {
   const onboardingData = useSettingsStore((s) => s.onboardingData);
   const phaseInfo = useCurrentPhase();
   const settings = useSettingsStore((s) => s.settings);
-  const { prediction } = usePredictions();
+  const { prediction, upcomingPredictions } = usePredictions();
   const todayLog = useLogStore((s) => s.todayLog);
   const initLog = useLogStore((s) => s.initialize);
   const upsertLog = useLogStore((s) => s.upsertLog);
@@ -48,8 +46,12 @@ export default function HomeScreen() {
 
   const cycleLength = onboardingData?.averageCycleLength ?? DEFAULT_CYCLE_LENGTH;
   const periodLength = onboardingData?.averagePeriodLength ?? DEFAULT_PERIOD_LENGTH;
-  const cycleDay = currentCycle ? getCurrentCycleDay(currentCycle.startDate) : 0;
+  const rawCycleDay = currentCycle ? getCurrentCycleDay(currentCycle.startDate) : 0;
+  const isLate = rawCycleDay > cycleLength;
+  const daysLate = isLate ? rawCycleDay - cycleLength : 0;
   const currentPhase = phaseInfo?.phase ?? CyclePhase.UNKNOWN;
+  // For the ring, use the effective (rolled over) day
+  const effectiveCycleDay = phaseInfo?.cycleDay ?? (cycleLength > 0 ? ((rawCycleDay - 1) % cycleLength) + 1 : rawCycleDay);
 
   const hasCycle = !!currentCycle;
   const periodEnded = hasCycle && !!currentCycle.periodEndDate;
@@ -84,51 +86,56 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.ringWrap}>
-          <CycleRing cycleDay={Math.min(cycleDay, cycleLength)} cycleLength={cycleLength} periodLength={periodLength} currentPhase={currentPhase} />
+          <CycleRing cycleDay={effectiveCycleDay} cycleLength={cycleLength} periodLength={periodLength} currentPhase={currentPhase} />
+          {isLate && (
+            <View style={styles.lateBanner}>
+              <Ionicons name="time-outline" size={14} color={colors.accent[600]} />
+              <Text style={styles.lateText}>
+                {daysLate} day{daysLate !== 1 ? 's' : ''} past expected cycle length
+              </Text>
+            </View>
+          )}
         </View>
 
         <View style={styles.content}>
           {phaseInfo && <PhaseCard phaseInfo={phaseInfo} />}
 
-          {/* Prediction section */}
-          {prediction ? (
-            <>
-              <PredictionCard prediction={prediction} />
-              {settings.fertilityTrackingEnabled && currentCycle && (
-                <FertileWindowBar
-                  prediction={prediction}
-                  cycleStartDate={currentCycle.startDate}
-                  cycleLength={cycleLength}
-                />
-              )}
-            </>
-          ) : hasCycle ? (
-            <Card style={{ alignItems: 'center', paddingVertical: 20 }}>
-              <Ionicons name="analytics-outline" size={28} color={colors.secondary[400]} />
-              <Text style={{ fontSize: 14, color: colors.secondary[500], marginTop: 8, textAlign: 'center' }}>
-                Track more cycles for predictions
+          {/* Upcoming Cycles */}
+          {upcomingPredictions.length > 0 && (
+            <Card variant="elevated" style={{ gap: 10 }}>
+              <Text style={styles.sectionTitle}>UPCOMING CYCLES</Text>
+              {upcomingPredictions.map((p, idx) => (
+                <View key={p.id} style={styles.upcomingRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.upcomingLabel}>Period {idx + 1}</Text>
+                    <Text style={styles.upcomingDate}>{formatDisplayDate(p.predictedPeriodStart, true)}</Text>
+                  </View>
+                  {settings.fertilityTrackingEnabled && (
+                    <View style={{ flex: 1, alignItems: 'flex-end' }}>
+                      <Text style={styles.upcomingLabel}>Ovulation</Text>
+                      <Text style={[styles.upcomingDate, { color: colors.phase.ovulation }]}>{formatDisplayDate(p.estimatedOvulationDate, true)}</Text>
+                    </View>
+                  )}
+                </View>
+              ))}
+              <Text style={{ fontSize: 11, color: colors.secondary[400], marginTop: 4 }}>
+                {prediction?.basisDescription ?? 'Based on your cycle data'}
               </Text>
             </Card>
-          ) : null}
+          )}
 
-          {/* Quick Log */}
+          {/* Quick Flow Log */}
           {hasCycle && (
-            <QuickLogCard
-              selectedMoods={todayLog?.mood ?? []}
-              onMoodToggle={(mood: MoodType) => {
-                const currentMoods = todayLog?.mood ?? [];
-                const newMoods = currentMoods.includes(mood)
-                  ? currentMoods.filter((m) => m !== mood)
-                  : [...currentMoods, mood];
-                const logToUpdate = todayLog ?? createBlankLog(today(), currentCycle?.id ?? null);
-                upsertLog(db, { ...logToUpdate, mood: newMoods, updatedAt: nowISO() });
-              }}
-              onLogMore={() => {
-                const { router } = require('expo-router');
-                router.navigate('/(tabs)/log');
-              }}
-              hasLoggedToday={todayLog !== null}
-            />
+            <Card style={{ gap: 10 }}>
+              <Text style={styles.sectionTitle}>TODAY'S FLOW</Text>
+              <FlowSelector
+                value={todayLog?.flow ?? null}
+                onChange={(flow: FlowIntensity) => {
+                  const logToUpdate = todayLog ?? createBlankLog(today(), currentCycle?.id ?? null);
+                  upsertLog(db, { ...logToUpdate, flow, updatedAt: nowISO() });
+                }}
+              />
+            </Card>
           )}
 
           <Card variant="elevated" style={{ gap: 12 }}>
@@ -156,10 +163,14 @@ export default function HomeScreen() {
           <Card style={{ gap: 8 }}>
             <View style={styles.infoRow}><Text style={styles.infoLabel}>Cycle Length</Text><Text style={styles.infoValue}>{cycleLength} days</Text></View>
             <View style={styles.infoRow}><Text style={styles.infoLabel}>Period Length</Text><Text style={styles.infoValue}>{periodLength} days</Text></View>
-            <View style={styles.infoRow}><Text style={styles.infoLabel}>Current Day</Text><Text style={styles.infoValue}>Day {cycleDay} of {cycleLength}</Text></View>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Current Day</Text>
+              <Text style={[styles.infoValue, isLate && { color: colors.accent[600] }]}>
+                Day {rawCycleDay}{isLate ? ` (${daysLate}d late)` : ` of ${cycleLength}`}
+              </Text>
+            </View>
           </Card>
 
-          <Text style={styles.disclaimer}>{MEDICAL_DISCLAIMER}</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -181,4 +192,41 @@ const styles = StyleSheet.create({
   infoLabel: { fontSize: 12, color: colors.secondary[400] },
   infoValue: { fontSize: 12, fontWeight: '500', color: colors.secondary[700] },
   disclaimer: { fontSize: 12, color: colors.secondary[400], textAlign: 'center', lineHeight: 16, paddingHorizontal: 16 },
+  lateBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: colors.accent[50],
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.accent[200] ?? colors.accent[100],
+  },
+  lateText: {
+    fontSize: 13,
+    color: colors.accent[600],
+    fontWeight: '500',
+  },
+  upcomingRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.secondary[100],
+  },
+  upcomingLabel: {
+    fontSize: 11,
+    color: colors.secondary[400],
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  upcomingDate: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.secondary[700],
+    marginTop: 2,
+  },
 });
