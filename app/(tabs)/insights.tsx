@@ -12,7 +12,6 @@ import { EmptyState } from '@src/components/ui/EmptyState';
 import { formatDisplayDate, today, subDays } from '@src/utils/dateUtils';
 import { formatFlowIntensity } from '@src/utils/formatUtils';
 import { colors, typography, spacing } from '@src/constants/theme';
-import { useThemeColors } from '@src/hooks/useThemeColors';
 import type { DailyLog } from '@src/types';
 import { FlowIntensity, PredictionConfidence } from '@src/types';
 
@@ -34,7 +33,6 @@ const FLOW_COLOR: Record<string, string> = {
 };
 
 export default function InsightsScreen() {
-  const theme = useThemeColors();
   const db = useDatabase();
   const cycles = useCycleStore((s) => s.cycles);
   const { upcomingPredictions } = usePredictions();
@@ -63,7 +61,7 @@ export default function InsightsScreen() {
 
   if (!hasCycles) {
     return (
-      <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
+      <SafeAreaView style={styles.safe}>
         <View style={{ flex: 1, justifyContent: 'center' }}>
           <EmptyState
             icon="bar-chart-outline"
@@ -76,15 +74,15 @@ export default function InsightsScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
+    <SafeAreaView style={styles.safe}>
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <Text style={[styles.screenTitle, { color: theme.textPrimary }]}>Insights</Text>
-          <Text style={[styles.screenSubtitle, { color: theme.textSecondary }]}>Your cycle at a glance</Text>
+          <Text style={styles.screenTitle}>Insights</Text>
+          <Text style={styles.screenSubtitle}>Your cycle at a glance</Text>
         </View>
 
         {/* Past Periods */}

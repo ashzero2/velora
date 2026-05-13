@@ -14,11 +14,9 @@ import { Button } from '@src/components/ui/Button';
 import { today, subDays, formatDisplayDate, nowISO } from '@src/utils/dateUtils';
 import type { DailyLog, FlowIntensity } from '@src/types';
 import { colors, typography, spacing } from '@src/constants/theme';
-import { useThemeColors } from '@src/hooks/useThemeColors';
 import { formatFlowIntensity } from '@src/utils/formatUtils';
 
 export default function LogScreen() {
-  const theme = useThemeColors();
   const db = useDatabase();
   const currentCycle = useCycleStore((s) => s.currentCycle);
   const todayLog = useLogStore((s) => s.todayLog);
@@ -61,7 +59,7 @@ export default function LogScreen() {
   const isToday = selectedDate === today();
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
+    <SafeAreaView style={styles.safe}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
           style={{ flex: 1 }}
@@ -71,8 +69,8 @@ export default function LogScreen() {
         >
           {/* Header */}
           <View style={styles.header}>
-            <Text style={[styles.screenTitle, { color: theme.textPrimary }]}>Daily Log</Text>
-            <Text style={[styles.screenSubtitle, { color: theme.textSecondary }]}>
+            <Text style={styles.screenTitle}>Daily Log</Text>
+            <Text style={styles.screenSubtitle}>
               {isToday ? 'Today' : formatDisplayDate(selectedDate, true)}
             </Text>
           </View>
@@ -110,7 +108,7 @@ export default function LogScreen() {
           {editingLog && (
             <>
               <Card style={styles.section}>
-                <Text style={[styles.sectionLabel, { color: theme.textPrimary }]}>Flow Level</Text>
+                <Text style={styles.sectionLabel}>Flow Level</Text>
                 <FlowSelector
                   value={editingLog.flow}
                   onChange={(flow: FlowIntensity) => {
@@ -121,9 +119,9 @@ export default function LogScreen() {
 
               {/* Notes */}
               <Card style={styles.section}>
-                <Text style={[styles.sectionLabel, { color: theme.textPrimary }]}>Notes</Text>
+                <Text style={styles.sectionLabel}>Notes</Text>
                 <TextInput
-                  style={[styles.notesInput, { backgroundColor: theme.inputBackground, color: theme.textPrimary }]}
+                  style={styles.notesInput}
                   placeholder="How are you feeling today?"
                   placeholderTextColor={colors.secondary[400]}
                   value={editingLog.notes}
@@ -150,7 +148,7 @@ export default function LogScreen() {
           {/* Recent Logs */}
           {recentLogs.length > 0 && (
             <View style={styles.recentSection}>
-              <Text style={[styles.recentTitle, { color: theme.textPrimary }]}>Recent Logs</Text>
+              <Text style={styles.recentTitle}>Recent Logs</Text>
               {[...recentLogs]
                 .sort((a, b) => b.date.localeCompare(a.date))
                 .slice(0, 7)
@@ -159,7 +157,7 @@ export default function LogScreen() {
                     key={log.date}
                     onPress={() => setSelectedDate(log.date)}
                     activeOpacity={0.7}
-                    style={[styles.recentItem, { backgroundColor: theme.surface, borderColor: theme.border }]}
+                    style={styles.recentItem}
                   >
                     <Text style={styles.recentDate}>
                       {log.date === today() ? 'Today' : formatDisplayDate(log.date)}

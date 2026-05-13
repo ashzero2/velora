@@ -17,12 +17,10 @@ import { useLogStore, createBlankLog } from '@src/stores/useLogStore';
 import { today, formatDisplayDate, nowISO } from '@src/utils/dateUtils';
 import { CyclePhase, FlowIntensity } from '@src/types';
 import { colors } from '@src/constants/theme';
-import { useThemeColors } from '@src/hooks/useThemeColors';
 import { DEFAULT_CYCLE_LENGTH, DEFAULT_PERIOD_LENGTH } from '@src/constants/medical';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function HomeScreen() {
-  const theme = useThemeColors();
   const db = useDatabase();
   const initialize = useCycleStore((s) => s.initialize);
   const initSettings = useSettingsStore((s) => s.initialize);
@@ -65,7 +63,7 @@ export default function HomeScreen() {
 
   if (!hasCycle && !isLoading) {
     return (
-      <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
+      <SafeAreaView style={styles.safe}>
         <View style={{ flex: 1, justifyContent: 'center' }}>
           <EmptyState
             icon="flower-outline"
@@ -80,11 +78,11 @@ export default function HomeScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
+    <SafeAreaView style={styles.safe}>
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 32 }} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Text style={[styles.appName, { color: theme.textPrimary }]}>Velora</Text>
-          <Text style={[styles.date, { color: theme.textSecondary }]}>{formatDisplayDate(today(), true)}</Text>
+          <Text style={styles.appName}>Velora</Text>
+          <Text style={styles.date}>{formatDisplayDate(today(), true)}</Text>
         </View>
 
         <View style={styles.ringWrap}>
@@ -105,7 +103,7 @@ export default function HomeScreen() {
           {/* Upcoming Cycles */}
           {upcomingPredictions.length > 0 && (
             <Card variant="elevated" style={{ gap: 10 }}>
-              <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>UPCOMING CYCLES</Text>
+              <Text style={styles.sectionTitle}>UPCOMING CYCLES</Text>
               {upcomingPredictions.map((p, idx) => (
                 <View key={p.id} style={styles.upcomingRow}>
                   <View style={{ flex: 1 }}>
@@ -129,7 +127,7 @@ export default function HomeScreen() {
           {/* Quick Flow Log */}
           {hasCycle && (
             <Card style={{ gap: 10 }}>
-              <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>TODAY'S FLOW</Text>
+              <Text style={styles.sectionTitle}>TODAY'S FLOW</Text>
               <FlowSelector
                 value={todayLog?.flow ?? null}
                 onChange={(flow: FlowIntensity) => {
@@ -141,7 +139,7 @@ export default function HomeScreen() {
           )}
 
           <Card variant="elevated" style={{ gap: 12 }}>
-            <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>PERIOD STATUS</Text>
+            <Text style={styles.sectionTitle}>PERIOD STATUS</Text>
             {periodOngoing && (
               <View style={{ gap: 12 }}>
                 <View style={styles.statusRow}>

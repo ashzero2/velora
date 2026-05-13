@@ -16,11 +16,9 @@ import { EmptyState } from '@src/components/ui/EmptyState';
 import { CyclePhase } from '@src/types';
 import { diffDays, today } from '@src/utils/dateUtils';
 import { colors } from '@src/constants/theme';
-import { useThemeColors } from '@src/hooks/useThemeColors';
 import { DEFAULT_CYCLE_LENGTH, DEFAULT_PERIOD_LENGTH, DEFAULT_LUTEAL_PHASE } from '@src/constants/medical';
 
 export default function FertilityScreen() {
-  const theme = useThemeColors();
   const db = useDatabase();
   const currentCycle = useCycleStore((s) => s.currentCycle);
   const onboardingData = useSettingsStore((s) => s.onboardingData);
@@ -37,7 +35,7 @@ export default function FertilityScreen() {
 
   if (!hasCycle) {
     return (
-      <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
+      <SafeAreaView style={styles.safe}>
         <View style={{ flex: 1, justifyContent: 'center' }}>
           <EmptyState
             icon="leaf-outline"
@@ -50,7 +48,7 @@ export default function FertilityScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
+    <SafeAreaView style={styles.safe}>
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={styles.scrollContent}
@@ -58,8 +56,8 @@ export default function FertilityScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={[styles.screenTitle, { color: theme.textPrimary }]}>Fertility & Wellness</Text>
-          <Text style={[styles.screenSubtitle, { color: theme.textSecondary }]}>Personalized for your cycle</Text>
+          <Text style={styles.screenTitle}>Fertility & Wellness</Text>
+          <Text style={styles.screenSubtitle}>Personalized for your cycle</Text>
         </View>
 
         {/* Section A: Fertile Window Status */}

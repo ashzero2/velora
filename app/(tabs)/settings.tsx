@@ -12,7 +12,6 @@ import { Slider } from '@src/components/ui/Slider';
 import { getCurrentCycleDay } from '@src/engines/CycleEngine';
 import { formatDisplayDate } from '@src/utils/dateUtils';
 import { colors } from '@src/constants/theme';
-import { useThemeColors } from '@src/hooks/useThemeColors';
 import {
   DEFAULT_CYCLE_LENGTH, DEFAULT_PERIOD_LENGTH,
   ONBOARDING_CYCLE_MIN, ONBOARDING_CYCLE_MAX,
@@ -21,7 +20,6 @@ import {
 } from '@src/constants/medical';
 
 export default function SettingsScreen() {
-  const theme = useThemeColors();
   const db = useDatabase();
   const settings = useSettingsStore((s) => s.settings);
   const onboardingData = useSettingsStore((s) => s.onboardingData);
@@ -62,10 +60,10 @@ export default function SettingsScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
+    <SafeAreaView style={styles.safe}>
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Text style={[styles.headerTitle, { color: theme.textPrimary }]}>Settings</Text>
+          <Text style={styles.headerTitle}>Settings</Text>
         </View>
 
         <View style={styles.content}>
@@ -86,44 +84,16 @@ export default function SettingsScreen() {
           </Card>
 
           <Card variant="elevated" style={{ gap: 12 }}>
-            <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>PREFERENCES</Text>
+            <Text style={styles.sectionTitle}>PREFERENCES</Text>
             <TouchableOpacity onPress={handleToggleFertility} activeOpacity={0.7} style={styles.toggleRow}>
               <View style={{ flex: 1, marginRight: 12 }}>
-                <Text style={[styles.toggleTitle, { color: theme.textPrimary }]}>Fertility tracking</Text>
-                <Text style={[styles.toggleDesc, { color: theme.textMuted }]}>Show ovulation and fertile window estimates</Text>
+                <Text style={styles.toggleTitle}>Fertility tracking</Text>
+                <Text style={styles.toggleDesc}>Show ovulation and fertile window estimates</Text>
               </View>
               <View style={[styles.switch, settings.fertilityTrackingEnabled && styles.switchOn]}>
                 <View style={[styles.switchThumb, settings.fertilityTrackingEnabled && styles.switchThumbOn]} />
               </View>
             </TouchableOpacity>
-
-            {/* Dark Mode Toggle */}
-            <View style={styles.toggleRow}>
-              <View style={{ flex: 1, marginRight: 12 }}>
-                <Text style={[styles.toggleTitle, { color: theme.textPrimary }]}>Dark mode</Text>
-                <Text style={[styles.toggleDesc, { color: theme.textMuted }]}>
-                  {settings.darkMode === 'system' ? 'Following system setting' : settings.darkMode ? 'Always on' : 'Always off'}
-                </Text>
-              </View>
-              <View style={styles.darkModeOptions}>
-                {(['system', false, true] as const).map((mode) => {
-                  const isActive = settings.darkMode === mode;
-                  const label = mode === 'system' ? 'Auto' : mode ? 'On' : 'Off';
-                  return (
-                    <TouchableOpacity
-                      key={String(mode)}
-                      onPress={() => updateSettings(db, { darkMode: mode })}
-                      activeOpacity={0.7}
-                      style={[styles.darkModeChip, isActive && styles.darkModeChipActive]}
-                    >
-                      <Text style={[styles.darkModeChipText, isActive && styles.darkModeChipTextActive]}>
-                        {label}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
           </Card>
 
           <Card style={{ gap: 8 }}>
@@ -173,22 +143,4 @@ const styles = StyleSheet.create({
   settingRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4 },
   settingLabel: { fontSize: 14, color: colors.secondary[500] },
   settingValue: { fontSize: 14, fontWeight: '500', color: colors.secondary[900] },
-  darkModeOptions: { flexDirection: 'row', gap: 4 },
-  darkModeChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 10,
-    backgroundColor: colors.secondary[100],
-  },
-  darkModeChipActive: {
-    backgroundColor: colors.primary[500],
-  },
-  darkModeChipText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: colors.secondary[600],
-  },
-  darkModeChipTextActive: {
-    color: '#ffffff',
-  },
 });
