@@ -1,46 +1,63 @@
-// ============================================================
-// Velora — Insights Screen
-// Analytics dashboard with stat cards, charts, and pattern cards.
-// ============================================================
-
 import React, { useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useDatabase } from '@src/hooks/useDatabase';
 import { useCycleStore } from '@src/stores/useCycleStore';
-import { useSettingsStore } from '@src/stores/useSettingsStore';
 import { useLogStore } from '@src/stores/useLogStore';
 import { usePredictions } from '@src/hooks/usePredictions';
-import { useInsights } from '@src/hooks/useInsights';
-import { StatCard } from '@src/components/insights/StatCard';
-import { CycleLengthChart } from '@src/components/insights/CycleLengthChart';
-import { SymptomTrendChart } from '@src/components/insights/SymptomTrendChart';
-import { PatternInsightCard } from '@src/components/insights/PatternInsightCard';
 import { Card } from '@src/components/ui/Card';
+import { Badge } from '@src/components/ui/Badge';
 import { EmptyState } from '@src/components/ui/EmptyState';
-import * as DailyLogRepository from '@src/database/repositories/DailyLogRepository';
-import { roundTo } from '@src/utils/mathUtils';
+import { formatDisplayDate, today, subDays } from '@src/utils/dateUtils';
+import { formatFlowIntensity } from '@src/utils/formatUtils';
 import { colors, typography, spacing } from '@src/constants/theme';
 import type { DailyLog } from '@src/types';
+import { FlowIntensity, PredictionConfidence } from '@src/types';
+
+// Flow level to visual height mapping
+const FLOW_HEIGHT: Record<string, number> = {
+  [FlowIntensity.SPOTTING]: 8,
+  [FlowIntensity.LIGHT]: 16,
+  [FlowIntensity.MEDIUM]: 28,
+  [FlowIntensity.HEAVY]: 40,
+  [FlowIntensity.VERY_HEAVY]: 52,
+};
+
+const FLOW_COLOR: Record<string, string> = {
+  [FlowIntensity.SPOTTING]: '#e8c4c4',
+  [FlowIntensity.LIGHT]: '#dba3a3',
+  [FlowIntensity.MEDIUM]: '#c97b7b',
+  [FlowIntensity.HEAVY]: '#b85a5a',
+  [FlowIntensity.VERY_HEAVY]: '#a33d3d',
+};
 
 export default function InsightsScreen() {
   const db = useDatabase();
   const cycles = useCycleStore((s) => s.cycles);
-  const { cycleStats } = usePredictions();
-  const { insights, isLoading } = useInsights();
+  const { upcomingPredictions } = usePredictions();
+  const recentLogs = useLogStore((s) => s.recentLogs);
   const initLog = useLogStore((s) => s.initialize);
 
-  const [allLogs, setAllLogs] = React.useState<DailyLog[]>([]);
-
-  // Initialize log store + load all logs for charts
-  useEffect(() => {
-    initLog(db);
-    DailyLogRepository.getAllDailyLogs(db).then(setAllLogs).catch(console.error);
-  }, [db, initLog]);
+  useEffect(() => { initLog(db); }, [db, initLog]);
 
   const hasCycles = cycles.length > 0;
-  const hasStats = cycleStats !== null;
+
+  // Last 3 completed cycles (most recent first)
+  const pastCycles = [...cycles]
+    .filter((c) => c.periodEndDate)
+    .sort((a, b) => b.startDate.localeCompare(a.startDate))
+    .slice(0, 3);
+
+  // Next 3 predictions
+  const predictions = upcomingPredictions.slice(0, 3);
+
+  // Last 7 days flow data
+  const last7Days = Array.from({ length: 7 }, (_, i) => {
+    const date = subDays(today(), 6 - i); // oldest first
+    const log = recentLogs.find((l) => l.date === date);
+    return { date, flow: log?.flow ?? null };
+  });
 
   if (!hasCycles) {
     return (
@@ -49,7 +66,7 @@ export default function InsightsScreen() {
           <EmptyState
             icon="bar-chart-outline"
             title="No insights yet"
-            description="Start tracking your cycles and logging daily symptoms to discover patterns and trends."
+            description="Start tracking your cycles to see period history, predictions, and flow patterns."
           />
         </View>
       </SafeAreaView>
@@ -63,71 +80,130 @@ export default function InsightsScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.screenTitle}>Insights</Text>
+        <View style={styles.header}>
+          <Text style={styles.screenTitle}>Insights</Text>
+          <Text style={styles.screenSubtitle}>Your cycle at a glance</Text>
+        </View>
 
-        {/* Stats Grid */}
-        {hasStats && (
-          <View style={styles.statsGrid}>
-            <StatCard
-              label="Avg Cycle"
-              value={cycleStats.averageCycleLength}
-              unit="days"
-            />
-            <StatCard
-              label="Avg Period"
-              value={cycleStats.averagePeriodLength}
-              unit="days"
-            />
-            <StatCard
-              label="Variability"
-              value={`±${roundTo(cycleStats.cycleVariability, 1)}`}
-              unit="days"
-            />
-            <StatCard
-              label="Regularity"
-              value={cycleStats.regularityScore}
-              unit="%"
-              trend={
-                cycleStats.irregularityFlag === 'normal'
-                  ? 'stable'
-                  : cycleStats.irregularityFlag === 'mildly_irregular'
-                    ? 'down'
-                    : 'down'
-              }
-              trendLabel={cycleStats.irregularityFlag === 'normal' ? 'Regular' : 'Irregular'}
-            />
+        {/* Past Periods */}
+        <Card variant="elevated" style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="calendar" size={16} color={colors.phase.menstruation} />
+            <Text style={styles.sectionTitle}>Past Periods</Text>
           </View>
-        )}
-
-        {/* Cycle Length Chart */}
-        <Card style={styles.section}>
-          <CycleLengthChart cycles={cycles} />
+          {pastCycles.length > 0 ? (
+            <View style={styles.periodList}>
+              {pastCycles.map((cycle, idx) => (
+                <View
+                  key={cycle.id}
+                  style={[styles.periodRow, idx === pastCycles.length - 1 && { borderBottomWidth: 0 }]}
+                >
+                  <View style={styles.periodDates}>
+                    <Text style={styles.periodDateText}>
+                      {formatDisplayDate(cycle.startDate)} – {cycle.periodEndDate ? formatDisplayDate(cycle.periodEndDate) : 'Ongoing'}
+                    </Text>
+                  </View>
+                  <View style={styles.periodStats}>
+                    {cycle.cycleLength ? (
+                      <View style={styles.periodStat}>
+                        <Text style={styles.periodStatValue}>{cycle.cycleLength}</Text>
+                        <Text style={styles.periodStatLabel}>cycle</Text>
+                      </View>
+                    ) : null}
+                    {cycle.periodLength ? (
+                      <View style={styles.periodStat}>
+                        <Text style={[styles.periodStatValue, { color: colors.phase.menstruation }]}>{cycle.periodLength}</Text>
+                        <Text style={styles.periodStatLabel}>period</Text>
+                      </View>
+                    ) : null}
+                  </View>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <Text style={styles.emptyText}>Complete a cycle to see period history</Text>
+          )}
         </Card>
 
-        {/* Symptom Trend Chart */}
-        <Card style={styles.section}>
-          <SymptomTrendChart cycles={cycles} dailyLogs={allLogs} />
-        </Card>
-
-        {/* Pattern Insights */}
-        <Text style={styles.sectionTitle}>Patterns & Correlations</Text>
-        {insights.length > 0 ? (
-          <View style={styles.insightsList}>
-            {insights.map((insight) => (
-              <PatternInsightCard key={insight.id} insight={insight} />
-            ))}
-          </View>
-        ) : (
-          <Card style={styles.emptyInsights}>
-            <Ionicons name="bulb-outline" size={28} color={colors.secondary[400]} />
-            <Text style={styles.emptyInsightsText}>
-              Log daily symptoms to discover patterns
-            </Text>
-            <Text style={styles.emptyInsightsSubtext}>
-              Patterns appear after tracking across multiple cycles
-            </Text>
+        {/* Upcoming Predictions */}
+        {predictions.length > 0 && (
+          <Card variant="elevated" style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="time-outline" size={16} color={colors.primary[500]} />
+              <Text style={styles.sectionTitle}>Upcoming Periods</Text>
+            </View>
+            <View style={styles.predictionList}>
+              {predictions.map((p, idx) => (
+                <View
+                  key={p.id}
+                  style={[styles.predictionRow, idx === predictions.length - 1 && { borderBottomWidth: 0 }]}
+                >
+                  <View style={styles.predictionLeft}>
+                    <Text style={styles.predictionLabel}>Period {idx + 1}</Text>
+                    <Text style={styles.predictionDate}>
+                      {formatDisplayDate(p.predictedPeriodStart, true)}
+                    </Text>
+                  </View>
+                  <Badge
+                    label={p.confidence}
+                    color={
+                      p.confidence === PredictionConfidence.HIGH ? colors.semantic.success
+                        : p.confidence === PredictionConfidence.MEDIUM ? colors.semantic.warning
+                          : colors.secondary[400]
+                    }
+                  />
+                </View>
+              ))}
+            </View>
           </Card>
         )}
+
+        {/* 7-Day Flow History */}
+        <Card style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="water" size={16} color={colors.phase.menstruation} />
+            <Text style={styles.sectionTitle}>7-Day Flow</Text>
+          </View>
+          <View style={styles.flowChart}>
+            {last7Days.map(({ date, flow }) => {
+              const dateObj = new Date(date);
+              const dayLabel = date === today() ? 'Today' : dateObj.toLocaleDateString('en-US', { weekday: 'short' });
+              const barHeight = flow ? FLOW_HEIGHT[flow] ?? 8 : 0;
+              const barColor = flow ? FLOW_COLOR[flow] ?? colors.secondary[300] : colors.secondary[200];
+
+              return (
+                <View key={date} style={styles.flowDay}>
+                  <View style={styles.flowBarWrap}>
+                    {flow ? (
+                      <View style={[styles.flowBar, { height: barHeight, backgroundColor: barColor }]} />
+                    ) : (
+                      <View style={styles.flowBarEmpty}>
+                        <Text style={styles.flowBarDash}>—</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={[styles.flowDayLabel, date === today() && { fontWeight: '700', color: colors.primary[500] }]}>
+                    {dayLabel}
+                  </Text>
+                  {flow && (
+                    <Text style={styles.flowLevelLabel}>
+                      {formatFlowIntensity(flow).charAt(0)}
+                    </Text>
+                  )}
+                </View>
+              );
+            })}
+          </View>
+          {/* Flow legend */}
+          <View style={styles.flowLegend}>
+            {[FlowIntensity.SPOTTING, FlowIntensity.LIGHT, FlowIntensity.MEDIUM, FlowIntensity.HEAVY, FlowIntensity.VERY_HEAVY].map((level) => (
+              <View key={level} style={styles.flowLegendItem}>
+                <View style={[styles.flowLegendDot, { backgroundColor: FLOW_COLOR[level] }]} />
+                <Text style={styles.flowLegendText}>{formatFlowIntensity(level)}</Text>
+              </View>
+            ))}
+          </View>
+        </Card>
       </ScrollView>
     </SafeAreaView>
   );
@@ -135,47 +211,106 @@ export default function InsightsScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background.light },
-  content: {
-    paddingHorizontal: spacing.base,
-    paddingBottom: spacing['3xl'],
-  },
-  screenTitle: {
-    ...typography.h2,
-    color: colors.text.primary,
-    paddingTop: spacing.base,
-    marginBottom: spacing.base,
-  },
-  statsGrid: {
+  content: { paddingHorizontal: 24, paddingBottom: 32, gap: 16 },
+  header: { paddingTop: 16, paddingBottom: 4 },
+  screenTitle: { fontSize: 24, fontWeight: '700', color: colors.secondary[900] },
+  screenSubtitle: { fontSize: 14, color: colors.secondary[500] },
+
+  section: { gap: spacing.md },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  sectionTitle: { fontSize: 15, fontWeight: '700', color: colors.text.primary },
+
+  // Past Periods
+  periodList: { gap: 0 },
+  periodRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.secondary[100],
+  },
+  periodDates: { flex: 1 },
+  periodDateText: { fontSize: 13, color: colors.text.secondary },
+  periodStats: { flexDirection: 'row', gap: 16 },
+  periodStat: { alignItems: 'center' },
+  periodStatValue: { fontSize: 16, fontWeight: '700', color: colors.text.primary },
+  periodStatLabel: { fontSize: 10, color: colors.text.muted, textTransform: 'uppercase' },
+
+  emptyText: { fontSize: 13, color: colors.text.muted, textAlign: 'center', paddingVertical: 12 },
+
+  // Predictions
+  predictionList: { gap: 0 },
+  predictionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.secondary[100],
+  },
+  predictionLeft: { flex: 1 },
+  predictionLabel: { fontSize: 11, color: colors.text.muted, textTransform: 'uppercase', letterSpacing: 0.3 },
+  predictionDate: { fontSize: 14, fontWeight: '600', color: colors.text.primary, marginTop: 2 },
+
+  // Flow chart
+  flowChart: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    height: 80,
+    paddingTop: 8,
+  },
+  flowDay: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 4,
+  },
+  flowBarWrap: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+  },
+  flowBar: {
+    width: 20,
+    borderRadius: 4,
+    minHeight: 4,
+  },
+  flowBarEmpty: {
+    justifyContent: 'flex-end',
+  },
+  flowBarDash: {
+    fontSize: 12,
+    color: colors.secondary[300],
+  },
+  flowDayLabel: {
+    fontSize: 10,
+    color: colors.text.muted,
+  },
+  flowLevelLabel: {
+    fontSize: 9,
+    color: colors.text.muted,
+    fontWeight: '600',
+  },
+  flowLegend: {
+    flexDirection: 'row',
+    justifyContent: 'center',
     flexWrap: 'wrap',
-    gap: 10,
-    marginBottom: spacing.base,
-  },
-  section: {
-    marginBottom: spacing.base,
-  },
-  sectionTitle: {
-    ...typography.bodyBold,
-    color: colors.text.primary,
-    marginBottom: spacing.sm,
+    gap: 8,
     marginTop: spacing.sm,
   },
-  insightsList: {
-    gap: 10,
-  },
-  emptyInsights: {
+  flowLegendItem: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 24,
-    gap: 8,
+    gap: 3,
   },
-  emptyInsightsText: {
-    ...typography.body,
-    color: colors.text.secondary,
-    textAlign: 'center',
+  flowLegendDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
-  emptyInsightsSubtext: {
-    ...typography.small,
+  flowLegendText: {
+    fontSize: 10,
     color: colors.text.muted,
-    textAlign: 'center',
   },
 });
