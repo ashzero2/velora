@@ -8,6 +8,7 @@ import { colors } from '@src/constants/theme';
 interface FlowSelectorProps {
   value: FlowIntensity | null;
   onChange: (flow: FlowIntensity) => void;
+  compact?: boolean;
 }
 
 const FLOW_OPTIONS: { value: FlowIntensity; iconSize: number; opacity: number }[] = [
@@ -18,7 +19,32 @@ const FLOW_OPTIONS: { value: FlowIntensity; iconSize: number; opacity: number }[
   { value: FlowIntensity.VERY_HEAVY, iconSize: 32, opacity: 1.0 },
 ];
 
-export function FlowSelector({ value, onChange }: FlowSelectorProps) {
+export function FlowSelector({ value, onChange, compact = false }: FlowSelectorProps) {
+  if (compact) {
+    return (
+      <View style={styles.compactRow}>
+        {FLOW_OPTIONS.map((option) => {
+          const isSelected = value === option.value;
+          return (
+            <TouchableOpacity
+              key={option.value}
+              onPress={() => onChange(option.value)}
+              activeOpacity={0.7}
+              style={[styles.compactOption, isSelected && styles.compactOptionSelected]}
+            >
+              <Ionicons
+                name="water"
+                size={option.iconSize * 0.75}
+                color={isSelected ? '#c97b7b' : '#a8a29e'}
+                style={{ opacity: isSelected ? 1 : option.opacity }}
+              />
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    );
+  }
+
   return (
     <View style={{ gap: 8 }}>
       <Text style={styles.label}>Flow Intensity</Text>
@@ -38,9 +64,6 @@ export function FlowSelector({ value, onChange }: FlowSelectorProps) {
                 color={isSelected ? '#c97b7b' : '#a8a29e'}
                 style={{ opacity: isSelected ? 1 : option.opacity }}
               />
-              <Text style={[styles.optionText, isSelected && styles.optionTextSelected]}>
-                {formatFlowIntensity(option.value)}
-              </Text>
             </TouchableOpacity>
           );
         })}
@@ -66,4 +89,18 @@ const styles = StyleSheet.create({
   optionSelected: { backgroundColor: 'rgba(201,123,123,0.15)', borderColor: '#c97b7b' },
   optionText: { fontSize: 11, marginTop: 4, color: colors.secondary[400] },
   optionTextSelected: { color: '#c97b7b', fontWeight: '600' },
+  compactRow: { flexDirection: 'row', gap: 6 },
+  compactOption: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.secondary[50],
+  },
+  compactOptionSelected: {
+    backgroundColor: 'rgba(201,123,123,0.15)',
+    borderWidth: 2,
+    borderColor: '#c97b7b',
+  },
 });

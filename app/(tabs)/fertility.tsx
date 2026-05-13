@@ -12,6 +12,7 @@ import { PhaseNutrition } from '@src/components/fertility/PhaseNutrition';
 import { FertilityFoods } from '@src/components/fertility/FertilityFoods';
 import { ConceptionTips } from '@src/components/fertility/ConceptionTips';
 import { WellnessTips } from '@src/components/fertility/WellnessTips';
+import { AccordionCard } from '@src/components/ui/AccordionCard';
 import { EmptyState } from '@src/components/ui/EmptyState';
 import { CyclePhase } from '@src/types';
 import { diffDays, today } from '@src/utils/dateUtils';
@@ -69,20 +70,48 @@ export default function FertilityScreen() {
           />
         )}
 
-        {/* Section B: Phase-Based Nutrition */}
-        <PhaseNutrition currentPhase={currentPhase} />
+        {/* Section B: Phase-Based Nutrition — collapsed by default */}
+        <AccordionCard
+          title="Phase Nutrition"
+          icon="nutrition-outline"
+          iconColor={colors.phase.fertile}
+          preview="Foods recommended for your current phase"
+        >
+          <PhaseNutrition currentPhase={currentPhase} />
+        </AccordionCard>
 
-        {/* Section D: Conception Tips */}
-        <ConceptionTips
-          ovulationDay={ovulationDay}
-          currentCycleDay={cycleDay}
-        />
+        {/* Section D: Conception Tips — collapsed */}
+        <AccordionCard
+          title="Conception Tips"
+          icon="sparkles-outline"
+          iconColor={colors.phase.ovulation}
+          preview="Timing, ovulation signs, and when to test"
+        >
+          <ConceptionTips
+            ovulationDay={ovulationDay}
+            currentCycleDay={cycleDay}
+          />
+        </AccordionCard>
 
-        {/* Section E: Wellness Tips */}
-        <WellnessTips currentPhase={currentPhase} />
+        {/* Section E: Wellness Tips — collapsed */}
+        <AccordionCard
+          title="Wellness & Lifestyle"
+          icon="fitness-outline"
+          iconColor={colors.primary[500]}
+          preview="Exercise, sleep, and hydration for your phase"
+        >
+          <WellnessTips currentPhase={currentPhase} />
+        </AccordionCard>
 
-        {/* Section C: Fertility Superfoods & Supplements */}
-        <FertilityFoods />
+        {/* Section C: Fertility Superfoods — collapsed */}
+        <AccordionCard
+          title="Superfoods & Supplements"
+          icon="heart-outline"
+          iconColor={colors.semantic.error}
+          preview="Top fertility foods and key supplements"
+        >
+          <FertilityFoods />
+        </AccordionCard>
       </ScrollView>
     </SafeAreaView>
   );

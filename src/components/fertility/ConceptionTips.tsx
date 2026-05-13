@@ -12,7 +12,7 @@ interface ConceptionTipsProps {
 
 export function ConceptionTips({ ovulationDay, currentCycleDay }: ConceptionTipsProps) {
   return (
-    <Card style={styles.card}>
+    <View style={styles.card}>
       <View style={styles.header}>
         <Ionicons name="sparkles-outline" size={18} color={colors.phase.ovulation} />
         <Text style={styles.title}>Conception Tips</Text>
@@ -44,7 +44,7 @@ export function ConceptionTips({ ovulationDay, currentCycleDay }: ConceptionTips
           </View>
         ))}
       </View>
-    </Card>
+    </View>
   );
 }
 

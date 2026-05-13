@@ -17,12 +17,7 @@ export function PhaseNutrition({ currentPhase }: PhaseNutritionProps) {
   const phaseName = PHASE_DISPLAY_NAMES[currentPhase] ?? 'Unknown';
 
   return (
-    <Card style={styles.card}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Ionicons name="nutrition-outline" size={18} color={phaseColor} />
-        <Text style={styles.title}>Nutrition for {phaseName} Phase</Text>
-      </View>
+    <View style={styles.card}>
 
       {/* Key Nutrients */}
       <View style={styles.nutrientRow}>
@@ -70,7 +65,7 @@ export function PhaseNutrition({ currentPhase }: PhaseNutritionProps) {
           </View>
         </>
       )}
-    </Card>
+    </View>
   );
 }
 

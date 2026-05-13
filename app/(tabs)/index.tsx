@@ -8,14 +8,12 @@ import { useCurrentPhase } from '@src/hooks/useCurrentPhase';
 import { getCurrentCycleDay } from '@src/engines/CycleEngine';
 import { CycleRing } from '@src/components/cycle/CycleRing';
 import { PhaseCard } from '@src/components/cycle/PhaseCard';
-import { FlowSelector } from '@src/components/log/FlowSelector';
 import { EmptyState } from '@src/components/ui/EmptyState';
 import { Button } from '@src/components/ui/Button';
 import { Card } from '@src/components/ui/Card';
 import { usePredictions } from '@src/hooks/usePredictions';
-import { useLogStore, createBlankLog } from '@src/stores/useLogStore';
-import { today, formatDisplayDate, nowISO } from '@src/utils/dateUtils';
-import { CyclePhase, FlowIntensity } from '@src/types';
+import { today, formatDisplayDate } from '@src/utils/dateUtils';
+import { CyclePhase } from '@src/types';
 import { colors } from '@src/constants/theme';
 import { DEFAULT_CYCLE_LENGTH, DEFAULT_PERIOD_LENGTH } from '@src/constants/medical';
 import { Ionicons } from '@expo/vector-icons';
@@ -33,15 +31,11 @@ export default function HomeScreen() {
   const phaseInfo = useCurrentPhase();
   const settings = useSettingsStore((s) => s.settings);
   const { prediction, upcomingPredictions } = usePredictions();
-  const todayLog = useLogStore((s) => s.todayLog);
-  const initLog = useLogStore((s) => s.initialize);
-  const upsertLog = useLogStore((s) => s.upsertLog);
 
   // Re-initialize stores when dashboard mounts (e.g. after onboarding)
   useEffect(() => {
     initSettings(db);
     initialize(db);
-    initLog(db);
   }, [db]);
 
   const cycleLength = onboardingData?.averageCycleLength ?? DEFAULT_CYCLE_LENGTH;
@@ -100,6 +94,14 @@ export default function HomeScreen() {
         <View style={styles.content}>
           {phaseInfo && <PhaseCard phaseInfo={phaseInfo} />}
 
+          {/* Period Action */}
+          {periodOngoing && (
+            <Button title="End Period" onPress={handleEndPeriod} variant="secondary" fullWidth loading={isLoading} />
+          )}
+          {periodEnded && (
+            <Button title="Start New Period" onPress={handleStartNewCycle} variant="primary" fullWidth loading={isLoading} />
+          )}
+
           {/* Upcoming Cycles */}
           {upcomingPredictions.length > 0 && (
             <Card variant="elevated" style={{ gap: 10 }}>
@@ -123,53 +125,6 @@ export default function HomeScreen() {
               </Text>
             </Card>
           )}
-
-          {/* Quick Flow Log */}
-          {hasCycle && (
-            <Card style={{ gap: 10 }}>
-              <Text style={styles.sectionTitle}>TODAY'S FLOW</Text>
-              <FlowSelector
-                value={todayLog?.flow ?? null}
-                onChange={(flow: FlowIntensity) => {
-                  const logToUpdate = todayLog ?? createBlankLog(today(), currentCycle?.id ?? null);
-                  upsertLog(db, { ...logToUpdate, flow, updatedAt: nowISO() });
-                }}
-              />
-            </Card>
-          )}
-
-          <Card variant="elevated" style={{ gap: 12 }}>
-            <Text style={styles.sectionTitle}>PERIOD STATUS</Text>
-            {periodOngoing && (
-              <View style={{ gap: 12 }}>
-                <View style={styles.statusRow}>
-                  <View style={styles.statusDot} />
-                  <Text style={styles.statusText}>Period started {formatDisplayDate(currentCycle.startDate)}</Text>
-                </View>
-                <Button title="End Period" onPress={handleEndPeriod} variant="secondary" fullWidth loading={isLoading} />
-              </View>
-            )}
-            {periodEnded && (
-              <View style={{ gap: 12 }}>
-                <View style={styles.statusRow}>
-                  <Ionicons name="checkmark-circle" size={18} color={colors.primary[500]} />
-                  <Text style={styles.statusText}>Period ended {formatDisplayDate(currentCycle.periodEndDate!)}</Text>
-                </View>
-                <Button title="Start New Period" onPress={handleStartNewCycle} variant="outline" fullWidth loading={isLoading} />
-              </View>
-            )}
-          </Card>
-
-          <Card style={{ gap: 8 }}>
-            <View style={styles.infoRow}><Text style={styles.infoLabel}>Cycle Length</Text><Text style={styles.infoValue}>{cycleLength} days</Text></View>
-            <View style={styles.infoRow}><Text style={styles.infoLabel}>Period Length</Text><Text style={styles.infoValue}>{periodLength} days</Text></View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Current Day</Text>
-              <Text style={[styles.infoValue, isLate && { color: colors.accent[600] }]}>
-                Day {rawCycleDay}{isLate ? ` (${daysLate}d late)` : ` of ${cycleLength}`}
-              </Text>
-            </View>
-          </Card>
 
         </View>
       </ScrollView>

@@ -38,7 +38,7 @@ export function WellnessTips({ currentPhase }: WellnessTipsProps) {
   const phaseName = PHASE_DISPLAY_NAMES[currentPhase] ?? 'Unknown';
 
   return (
-    <Card style={styles.card}>
+    <View style={styles.card}>
       <View style={styles.header}>
         <Ionicons name="fitness-outline" size={18} color={phaseColor} />
         <Text style={styles.title}>Wellness — {phaseName} Phase</Text>
@@ -85,7 +85,7 @@ export function WellnessTips({ currentPhase }: WellnessTipsProps) {
           </View>
         </View>
       )}
-    </Card>
+    </View>
   );
 }
 

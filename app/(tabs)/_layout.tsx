@@ -21,9 +21,9 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Home",
+          title: "Cycle",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home" size={size} color={color} />
+            <Ionicons name="flower-outline" size={size} color={color} />
           ),
         }}
       />
@@ -42,16 +42,16 @@ export default function TabLayout() {
         options={{
           title: "Log",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="create-outline" size={size} color={color} />
+            <Ionicons name="water-outline" size={size} color={color} />
           ),
         }}
       />
       <Tabs.Screen
         name="insights"
         options={{
-          title: "Insights",
+          title: "History",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="bar-chart-outline" size={size} color={color} />
+            <Ionicons name="calendar-outline" size={size} color={color} />
           ),
         }}
       />
@@ -60,7 +60,7 @@ export default function TabLayout() {
         options={{
           title: "Settings",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="settings-outline" size={size} color={color} />
+            <Ionicons name="cog-outline" size={size} color={color} />
           ),
         }}
       />

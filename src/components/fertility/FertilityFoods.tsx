@@ -9,7 +9,7 @@ export function FertilityFoods() {
   return (
     <View style={styles.wrapper}>
       {/* Superfoods */}
-      <Card style={styles.card}>
+      <View style={styles.card}>
         <View style={styles.header}>
           <Ionicons name="heart-outline" size={18} color={colors.phase.fertile} />
           <Text style={styles.title}>Fertility Superfoods</Text>
@@ -34,10 +34,10 @@ export function FertilityFoods() {
             </View>
           ))}
         </View>
-      </Card>
+      </View>
 
       {/* Supplements */}
-      <Card style={styles.card}>
+      <View style={styles.card}>
         <View style={styles.header}>
           <Ionicons name="medical-outline" size={18} color={colors.semantic.info} />
           <Text style={styles.title}>Key Supplements</Text>
@@ -62,7 +62,7 @@ export function FertilityFoods() {
             Always consult your healthcare provider before starting supplements.
           </Text>
         </View>
-      </Card>
+      </View>
     </View>
   );
 }
