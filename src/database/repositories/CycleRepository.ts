@@ -198,3 +198,84 @@ export async function startNewCycle(
 ): Promise<Cycle> {
   return createCycle(db, newStartDate);
 }
+
+/**
+ * Create cycles from onboarding data.
+ * Intelligently back-fills completed historical cycles from the onboarding
+ * start date up to today, then creates the current (ongoing) cycle.
+ *
+ * Example: lastPeriodStart=Mar 31, cycleLength=33, periodLength=4, today=May 13
+ *   → Cycle 1: Mar 31–May 2 (completed, period ended Apr 3)
+ *   → Cycle 2: May 3–ongoing (current cycle, period ended May 6 if within range)
+ *
+ * @returns the current (most recent) cycle
+ */
+export async function createOnboardingCycles(
+  db: SQLiteDatabase,
+  lastPeriodStart: string,
+  avgCycleLength: number,
+  avgPeriodLength: number,
+): Promise<Cycle> {
+  const { addDays, diffDays: diffD, today: todayFn, nowISO: nowFn } = await import('@src/utils/dateUtils');
+  const { generateId: genId } = await import('@src/utils/idUtils');
+
+  const todayStr = todayFn();
+  const totalDaysSinceStart = diffD(lastPeriodStart, todayStr);
+
+  // If the onboarding date is today or in the future, just create a single ongoing cycle
+  if (totalDaysSinceStart <= 0) {
+    return createCycle(db, lastPeriodStart);
+  }
+
+  // Calculate how many full cycles have passed
+  const fullCyclesPassed = Math.floor(totalDaysSinceStart / avgCycleLength);
+  const now = nowFn();
+  let lastCreatedCycle: Cycle | null = null;
+
+  // Create completed historical cycles
+  for (let i = 0; i < fullCyclesPassed; i++) {
+    const cycleStart = addDays(lastPeriodStart, i * avgCycleLength);
+    const cycleEnd = addDays(lastPeriodStart, (i + 1) * avgCycleLength);
+    const periodEnd = addDays(cycleStart, avgPeriodLength - 1);
+    const id = genId();
+
+    await db.runAsync(
+      `INSERT INTO cycles (id, start_date, end_date, period_end_date, cycle_length, period_length, notes, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, '', ?, ?)`,
+      [id, cycleStart, cycleEnd, periodEnd, avgCycleLength, avgPeriodLength, now, now],
+    );
+
+    lastCreatedCycle = {
+      id, startDate: cycleStart, endDate: cycleEnd, periodEndDate: periodEnd,
+      cycleLength: avgCycleLength, periodLength: avgPeriodLength,
+      notes: '', createdAt: now, updatedAt: now,
+    };
+  }
+
+  // Create the current (ongoing) cycle
+  const currentCycleStart = addDays(lastPeriodStart, fullCyclesPassed * avgCycleLength);
+  const dayInCurrentCycle = diffD(currentCycleStart, todayStr) + 1;
+  const currentId = genId();
+
+  // Auto-set periodEndDate if we're past the period length in the current cycle
+  let currentPeriodEnd: string | null = null;
+  let currentPeriodLength: number | null = null;
+  if (dayInCurrentCycle > avgPeriodLength) {
+    // Period has already ended in this cycle
+    currentPeriodEnd = addDays(currentCycleStart, avgPeriodLength - 1);
+    currentPeriodLength = avgPeriodLength;
+  }
+  // If dayInCurrentCycle <= avgPeriodLength, period is still ongoing (don't set periodEndDate)
+
+  await db.runAsync(
+    `INSERT INTO cycles (id, start_date, end_date, period_end_date, cycle_length, period_length, notes, created_at, updated_at)
+     VALUES (?, ?, NULL, ?, NULL, ?, '', ?, ?)`,
+    [currentId, currentCycleStart, currentPeriodEnd, currentPeriodLength, now, now],
+  );
+
+  return {
+    id: currentId, startDate: currentCycleStart, endDate: null,
+    periodEndDate: currentPeriodEnd, cycleLength: null, periodLength: currentPeriodLength,
+    notes: '', createdAt: now, updatedAt: now,
+  };
+}

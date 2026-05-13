@@ -139,7 +139,7 @@ export function calculateConfidence(cycles: Cycle[]): {
  * Generate full prediction for next cycle.
  *
  * Algorithm:
- *   1. Filter cycles with non-null cycleLength
+ *   1. Filter cycles with non-null cycleLength (or fall back to onboarding data)
  *   2. Calculate weighted average cycle length
  *   3. Calculate std deviation → confidence
  *   4. predicted_period_start = last_cycle_start + weighted_avg
@@ -149,26 +149,58 @@ export function calculateConfidence(cycles: Cycle[]): {
  *   8. range = std_dev × multiplier based on confidence
  *   9. Generate human-readable basisDescription
  *
- * @returns Prediction object, or null if no completed cycles exist
+ * Falls back to onboarding averageCycleLength when no completed cycles exist.
+ *
+ * @returns Prediction object, or null if no cycles and no onboarding data
  */
 export function generatePrediction(
   cycles: Cycle[],
   settings: { lutealPhase: number; fertilityTracking: boolean; avgPeriodLength: number },
+  onboardingCycleLength?: number,
 ): Prediction | null {
   const completedLengths = getCompletedCycleLengths(cycles);
-  if (completedLengths.length === 0) return null;
 
   // Find the most recent cycle (first in the array, which is newest→oldest)
   const mostRecentCycle = cycles[0];
   if (!mostRecentCycle) return null;
 
-  // Core calculations
-  const avgCycleLength = weightedAverage(completedLengths);
-  const stdDev = completedLengths.length >= 2 ? standardDeviation(completedLengths) : 0;
-  const { level: confidence, score: confidenceScore } = calculateConfidence(cycles);
+  // Determine cycle length to use: completed cycle data or onboarding fallback
+  let avgCycleLength: number;
+  let stdDev: number;
+  let confidence: PredictionConfidence;
+  let confidenceScore: number;
+  let cycleCountUsed: number;
+  let basedOnCycleIds: string[];
+  let usingOnboardingFallback = false;
+
+  if (completedLengths.length > 0) {
+    // Use actual completed cycle data
+    avgCycleLength = weightedAverage(completedLengths);
+    stdDev = completedLengths.length >= 2 ? standardDeviation(completedLengths) : 0;
+    const conf = calculateConfidence(cycles);
+    confidence = conf.level;
+    confidenceScore = conf.score;
+    cycleCountUsed = completedLengths.length;
+    basedOnCycleIds = cycles
+      .filter((c) => c.cycleLength !== null)
+      .slice(0, MAX_CYCLES_FOR_PREDICTION)
+      .map((c) => c.id);
+  } else if (onboardingCycleLength && onboardingCycleLength > 0) {
+    // Fall back to onboarding data — no completed cycles yet
+    avgCycleLength = onboardingCycleLength;
+    stdDev = 0;
+    confidence = PredictionConfidence.LOW;
+    confidenceScore = 15;
+    cycleCountUsed = 0;
+    basedOnCycleIds = [mostRecentCycle.id];
+    usingOnboardingFallback = true;
+  } else {
+    return null;
+  }
+
   const roundedAvg = roundTo(avgCycleLength, 1);
 
-  // Predicted next period start: most recent cycle start + weighted avg
+  // Predicted next period start: most recent cycle start + avg cycle length
   const predictedStart = addDays(mostRecentCycle.startDate, Math.round(avgCycleLength));
 
   // Predicted period end: start + average period length
@@ -187,19 +219,15 @@ export function generatePrediction(
   const fertileStart = subDays(estimatedOvulation, 5);
   const fertileEnd = estimatedOvulation;
 
-  // Cycle IDs used for calculation
-  const basedOnCycleIds = cycles
-    .filter((c) => c.cycleLength !== null)
-    .slice(0, MAX_CYCLES_FOR_PREDICTION)
-    .map((c) => c.id);
-
   // Basis description
-  const basisDescription = generatePredictionBasis(
-    completedLengths.length,
-    roundedAvg,
-    roundTo(stdDev, 1),
-    confidence,
-  );
+  const basisDescription = usingOnboardingFallback
+    ? `Based on your reported average cycle length of ${Math.round(avgCycleLength)} days. Low confidence — track more cycles for better predictions.`
+    : generatePredictionBasis(
+        cycleCountUsed,
+        roundedAvg,
+        roundTo(stdDev, 1),
+        confidence,
+      );
 
   return {
     id: generateId(),
@@ -218,6 +246,95 @@ export function generatePrediction(
     basisDescription,
     createdAt: nowISO(),
   };
+}
+
+/**
+ * Generate predictions for multiple upcoming cycles (3 by default).
+ * Each prediction projects forward by N × cycleLength from the last period start.
+ *
+ * @param cycles - all cycles, ordered newest → oldest
+ * @param settings - lutealPhase, fertilityTracking, avgPeriodLength
+ * @param onboardingCycleLength - fallback cycle length from onboarding
+ * @param count - number of upcoming cycles to predict (default 3)
+ * @returns array of Prediction objects for upcoming cycles
+ */
+export function generateMultiCyclePredictions(
+  cycles: Cycle[],
+  settings: { lutealPhase: number; fertilityTracking: boolean; avgPeriodLength: number },
+  onboardingCycleLength?: number,
+  count: number = 3,
+): Prediction[] {
+  const completedLengths = getCompletedCycleLengths(cycles);
+  const mostRecentCycle = cycles[0];
+  if (!mostRecentCycle) return [];
+
+  // Determine cycle length to use
+  let avgCycleLength: number;
+  let stdDev: number;
+  let confidence: PredictionConfidence;
+  let confidenceScore: number;
+  let cycleCountUsed: number;
+  let usingOnboardingFallback = false;
+
+  if (completedLengths.length > 0) {
+    avgCycleLength = weightedAverage(completedLengths);
+    stdDev = completedLengths.length >= 2 ? standardDeviation(completedLengths) : 0;
+    const conf = calculateConfidence(cycles);
+    confidence = conf.level;
+    confidenceScore = conf.score;
+    cycleCountUsed = completedLengths.length;
+  } else if (onboardingCycleLength && onboardingCycleLength > 0) {
+    avgCycleLength = onboardingCycleLength;
+    stdDev = 0;
+    confidence = PredictionConfidence.LOW;
+    confidenceScore = 15;
+    cycleCountUsed = 0;
+    usingOnboardingFallback = true;
+  } else {
+    return [];
+  }
+
+  const roundedAvg = roundTo(avgCycleLength, 1);
+  const roundedCycleLen = Math.round(avgCycleLength);
+  const predictions: Prediction[] = [];
+
+  for (let i = 1; i <= count; i++) {
+    // Each upcoming cycle starts i × cycleLength days after the most recent cycle start
+    const predictedStart = addDays(mostRecentCycle.startDate, roundedCycleLen * i);
+    const predictedEnd = addDays(predictedStart, settings.avgPeriodLength - 1);
+    const predictedRange = calculatePredictionRange(predictedStart, stdDev, confidence);
+
+    // Ovulation for this predicted cycle: predictedStart + (cycleLength - lutealPhase)
+    // This is the ovulation WITHIN the predicted cycle
+    const ovulationDayInCycle = roundedCycleLen - settings.lutealPhase;
+    const estimatedOvulation = addDays(predictedStart, ovulationDayInCycle);
+    const fertileStart = subDays(estimatedOvulation, 5);
+    const fertileEnd = estimatedOvulation;
+
+    const basisDescription = usingOnboardingFallback
+      ? `Cycle ${i}: Based on your reported average cycle length of ${roundedCycleLen} days.`
+      : `Cycle ${i}: Based on your last ${cycleCountUsed} cycles averaging ${roundedAvg} days.`;
+
+    predictions.push({
+      id: generateId(),
+      basedOnCycleIds: [mostRecentCycle.id],
+      predictedPeriodStart: predictedStart,
+      predictedPeriodEnd: predictedEnd,
+      predictedPeriodStartRange: predictedRange,
+      estimatedOvulationDate: estimatedOvulation,
+      fertileWindowStart: fertileStart,
+      fertileWindowEnd: fertileEnd,
+      confidence,
+      confidenceScore,
+      averageCycleLength: roundedAvg,
+      standardDeviation: roundTo(stdDev, 2),
+      lutealPhaseEstimate: settings.lutealPhase,
+      basisDescription,
+      createdAt: nowISO(),
+    });
+  }
+
+  return predictions;
 }
 
 // ────────────────────────────────────────────────────────────

@@ -58,25 +58,34 @@ export function getCurrentPhase(
   let dayInPhase: number;
   let totalPhaseDays: number;
 
-  if (cycleDay < 1 || cycleDay > cycleLength) {
+  // Handle cycle day exceeding cycle length — modular rollover
+  // Instead of returning UNKNOWN, estimate which phase the user is
+  // likely in based on where they'd be in an estimated new cycle.
+  let effectiveCycleDay = cycleDay;
+  if (cycleDay > cycleLength && cycleLength > 0) {
+    // Roll over into the estimated next cycle(s)
+    effectiveCycleDay = ((cycleDay - 1) % cycleLength) + 1;
+  }
+
+  if (effectiveCycleDay < 1) {
     phase = CyclePhase.UNKNOWN;
     dayInPhase = 0;
     totalPhaseDays = 0;
-  } else if (cycleDay >= boundaries.menstruation[0] && cycleDay <= boundaries.menstruation[1]) {
+  } else if (effectiveCycleDay >= boundaries.menstruation[0] && effectiveCycleDay <= boundaries.menstruation[1]) {
     phase = CyclePhase.MENSTRUATION;
-    dayInPhase = cycleDay - boundaries.menstruation[0] + 1;
+    dayInPhase = effectiveCycleDay - boundaries.menstruation[0] + 1;
     totalPhaseDays = boundaries.menstruation[1] - boundaries.menstruation[0] + 1;
-  } else if (cycleDay >= boundaries.follicular[0] && cycleDay <= boundaries.follicular[1]) {
+  } else if (effectiveCycleDay >= boundaries.follicular[0] && effectiveCycleDay <= boundaries.follicular[1]) {
     phase = CyclePhase.FOLLICULAR;
-    dayInPhase = cycleDay - boundaries.follicular[0] + 1;
+    dayInPhase = effectiveCycleDay - boundaries.follicular[0] + 1;
     totalPhaseDays = boundaries.follicular[1] - boundaries.follicular[0] + 1;
-  } else if (cycleDay >= boundaries.ovulation[0] && cycleDay <= boundaries.ovulation[1]) {
+  } else if (effectiveCycleDay >= boundaries.ovulation[0] && effectiveCycleDay <= boundaries.ovulation[1]) {
     phase = CyclePhase.OVULATION;
-    dayInPhase = cycleDay - boundaries.ovulation[0] + 1;
+    dayInPhase = effectiveCycleDay - boundaries.ovulation[0] + 1;
     totalPhaseDays = boundaries.ovulation[1] - boundaries.ovulation[0] + 1;
-  } else if (cycleDay >= boundaries.luteal[0] && cycleDay <= boundaries.luteal[1]) {
+  } else if (effectiveCycleDay >= boundaries.luteal[0] && effectiveCycleDay <= boundaries.luteal[1]) {
     phase = CyclePhase.LUTEAL;
-    dayInPhase = cycleDay - boundaries.luteal[0] + 1;
+    dayInPhase = effectiveCycleDay - boundaries.luteal[0] + 1;
     totalPhaseDays = boundaries.luteal[1] - boundaries.luteal[0] + 1;
   } else {
     phase = CyclePhase.UNKNOWN;
@@ -90,7 +99,7 @@ export function getCurrentPhase(
     phase,
     dayInPhase,
     totalPhaseDays,
-    cycleDay,
+    cycleDay: effectiveCycleDay,
     description: desc.description,
     hormonalTrends: desc.hormonalTrends,
     commonSymptoms: desc.commonSymptoms,

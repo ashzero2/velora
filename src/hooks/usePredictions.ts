@@ -18,6 +18,7 @@ import type { Prediction, CycleStatistics } from '@src/types';
  */
 export function usePredictions(): {
   prediction: Prediction | null;
+  upcomingPredictions: Prediction[];
   cycleStats: CycleStatistics | null;
   isLoading: boolean;
 } {
@@ -27,6 +28,7 @@ export function usePredictions(): {
   const onboardingData = useSettingsStore((s) => s.onboardingData);
 
   const currentPrediction = usePredictionStore((s) => s.currentPrediction);
+  const upcomingPredictions = usePredictionStore((s) => s.upcomingPredictions);
   const cycleStats = usePredictionStore((s) => s.cycleStats);
   const isLoading = usePredictionStore((s) => s.isLoading);
   const initialize = usePredictionStore((s) => s.initialize);
@@ -51,6 +53,7 @@ export function usePredictions(): {
 
   return {
     prediction: currentPrediction,
+    upcomingPredictions,
     cycleStats,
     isLoading,
   };

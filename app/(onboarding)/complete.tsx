@@ -8,6 +8,7 @@ import { Card } from '@src/components/ui/Card';
 import { useDatabase } from '@src/hooks/useDatabase';
 import { useSettingsStore } from '@src/stores/useSettingsStore';
 import { useCycleStore } from '@src/stores/useCycleStore';
+import { createOnboardingCycles } from '@src/database/repositories/CycleRepository';
 import { formatDisplayDate, nowISO } from '@src/utils/dateUtils';
 import { colors } from '@src/constants/theme';
 import type { OnboardingData } from '@src/types';
@@ -20,7 +21,7 @@ export default function CompleteScreen() {
 
   const db = useDatabase();
   const completeOnboarding = useSettingsStore((s) => s.completeOnboarding);
-  const startPeriod = useCycleStore((s) => s.startPeriod);
+  const initializeCycles = useCycleStore((s) => s.initialize);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const lastPeriodStart = params.lastPeriodStart ?? '';
@@ -39,7 +40,10 @@ export default function CompleteScreen() {
         isIrregular, fertilityTracking, completedAt: nowISO(),
       };
       await completeOnboarding(db, data);
-      await startPeriod(db, lastPeriodStart);
+      // Smart cycle creation: back-fills completed cycles and creates current cycle
+      await createOnboardingCycles(db, lastPeriodStart, avgCycleLength, avgPeriodLength);
+      // Re-initialize cycle store to pick up all created cycles
+      await initializeCycles(db);
       router.replace('/(tabs)');
     } catch (err) {
       console.error('Failed to complete onboarding:', err);

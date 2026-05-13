@@ -7,12 +7,13 @@
 import { create } from 'zustand';
 import type { SQLiteDatabase } from 'expo-sqlite';
 import type { Cycle, Prediction, CycleStatistics, UserSettings, OnboardingData } from '@src/types';
-import { generatePrediction, generateCycleStatistics } from '@src/engines/PredictionEngine';
+import { generatePrediction, generateMultiCyclePredictions, generateCycleStatistics } from '@src/engines/PredictionEngine';
 import * as PredictionRepository from '@src/database/repositories/PredictionRepository';
 import { DEFAULT_LUTEAL_PHASE, DEFAULT_PERIOD_LENGTH } from '@src/constants/medical';
 
 interface PredictionState {
   currentPrediction: Prediction | null;
+  upcomingPredictions: Prediction[];
   cycleStats: CycleStatistics | null;
   isLoading: boolean;
   error: string | null;
@@ -30,6 +31,7 @@ interface PredictionState {
 
 export const usePredictionStore = create<PredictionState>((set) => ({
   currentPrediction: null,
+  upcomingPredictions: [],
   cycleStats: null,
   isLoading: false,
   error: null,
@@ -61,12 +63,25 @@ export const usePredictionStore = create<PredictionState>((set) => ({
             )
           : onboardingData?.averagePeriodLength ?? DEFAULT_PERIOD_LENGTH;
 
-      // Generate new prediction
-      const prediction = generatePrediction(cycles, {
+      const predictionSettings = {
         lutealPhase: settings.defaultLutealPhase ?? DEFAULT_LUTEAL_PHASE,
         fertilityTracking: settings.fertilityTrackingEnabled,
         avgPeriodLength,
-      });
+      };
+
+      // Onboarding cycle length as fallback when no completed cycles
+      const onboardingCycleLength = onboardingData?.averageCycleLength;
+
+      // Generate next cycle prediction (with onboarding fallback)
+      const prediction = generatePrediction(cycles, predictionSettings, onboardingCycleLength);
+
+      // Generate 3 upcoming cycle predictions
+      const upcomingPredictions = generateMultiCyclePredictions(
+        cycles,
+        predictionSettings,
+        onboardingCycleLength,
+        3,
+      );
 
       // Generate cycle statistics
       const cycleStats = generateCycleStatistics(cycles);
@@ -79,6 +94,7 @@ export const usePredictionStore = create<PredictionState>((set) => ({
 
       set({
         currentPrediction: prediction,
+        upcomingPredictions,
         cycleStats,
         isLoading: false,
       });
@@ -94,6 +110,7 @@ export const usePredictionStore = create<PredictionState>((set) => ({
   clear: () => {
     set({
       currentPrediction: null,
+      upcomingPredictions: [],
       cycleStats: null,
       isLoading: false,
       error: null,
