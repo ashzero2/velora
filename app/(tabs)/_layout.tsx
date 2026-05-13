@@ -1,7 +1,11 @@
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { useSettingsStore } from "@src/stores/useSettingsStore";
 
 export default function TabLayout() {
+  const settings = useSettingsStore((s) => s.settings);
+  const fertilityEnabled = settings.fertilityTrackingEnabled;
+
   return (
     <Tabs
       screenOptions={{
@@ -24,12 +28,13 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="calendar"
+        name="fertility"
         options={{
-          title: "Calendar",
+          title: "Fertility",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="calendar-outline" size={size} color={color} />
+            <Ionicons name="leaf-outline" size={size} color={color} />
           ),
+          href: fertilityEnabled ? "/fertility" : null,
         }}
       />
       <Tabs.Screen
@@ -57,6 +62,13 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="settings-outline" size={size} color={color} />
           ),
+        }}
+      />
+      {/* Calendar tab hidden — kept for routing but not shown in tab bar */}
+      <Tabs.Screen
+        name="calendar"
+        options={{
+          href: null,
         }}
       />
     </Tabs>
